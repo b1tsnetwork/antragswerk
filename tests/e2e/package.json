@@ -4,5 +4,5 @@
   "type": "module",
   "description": "Rauchtest der Oberfläche (Playwright) – siehe smoke.mjs",
   "scripts": { "smoke": "node smoke.mjs" },
-  "devDependencies": { "playwright": "1.63.0" }
+  "devDependencies": { "playwright": "1.64.1" }
 }
