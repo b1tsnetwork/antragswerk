@@ -1,0 +1,47 @@
+{{define "content"}}{{with .Data}}
+<div class="pagehead"><div><h1>Ablauf-Designer</h1><p class="muted">Formulare, Freigaben, parallele Aufgaben, Skripte und Mails gestalten. Änderungen wirken erst nach dem Veröffentlichen – laufende Vorgänge bleiben auf ihrer Version.</p></div>
+  <div class="actions">
+    <details class="dropdown"><summary class="btn">Importieren</summary>
+      <form method="post" action="/designer/import" enctype="multipart/form-data" class="card dropform"><input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <label>YAML- oder JSON-Datei<input type="file" name="file" accept=".yaml,.yml,.json" required></label><button class="btn primary">Importieren</button></form></details>
+    <details class="dropdown right"><summary class="btn primary">+ Neuer Ablauf</summary>
+      <form method="post" action="/designer/neu" class="card dropform"><input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <label>Name<input name="name" required placeholder="z. B. Gastzugang WLAN"></label>
+        <label>Ausgangspunkt<select name="from"><option value="">Leer (Grundgerüst)</option>
+          <optgroup label="Mitgelieferte Vorlagen">{{range .Library}}<option value="lib:{{.Key}}">{{.Name}}</option>{{end}}</optgroup>
+          <optgroup label="Kopie eines Ablaufs">{{range .Items}}{{with .Current}}<option value="{{.Def.Key}}">{{.Def.Name}}</option>{{end}}{{end}}</optgroup></select></label>
+        <button class="btn primary">Anlegen &amp; öffnen</button></form></details>
+  </div>
+</div>
+<div class="card flush">
+<table class="grid wftable">
+  <thead><tr><th></th><th>Ablauf</th><th>Status</th><th>Vorgänge</th><th></th></tr></thead>
+  <tbody>
+  {{range .Items}}{{$w := .}}{{with .Current}}
+  <tr class="{{if $w.Archived}}disabled{{end}}">
+    <td class="w0"><span class="qico sm" style="--c: {{safeColor .Def.Color}}">{{.Def.Icon}}</span></td>
+    <td><a href="/designer/{{$w.Key}}"><b>{{.Def.Name}}</b></a><div class="small muted">{{.Def.Category}} · {{len .Def.Form.Sections}} Abschnitte · {{len .Def.Steps}} Schritte · Nummern {{.Def.Prefix}}-JJJJ-NNNN</div></td>
+    <td>{{if $w.Active}}<span class="pill s-ok">Aktiv · v{{$w.Active.Version}}</span>{{end}} {{if $w.Draft}}<span class="pill s-warn">Entwurf</span>{{end}} {{if $w.Archived}}<span class="pill s-bad" title="{{$w.DisabledNote}}">⏸ deaktiviert</span>{{if $w.DisabledNote}}<div class="small muted">{{$w.DisabledNote}}</div>{{end}}{{end}}</td>
+    <td>{{if $w.Open}}<b>{{$w.Open}}</b> offen · {{end}}{{$w.Requests}} gesamt</td>
+    <td class="rowactions">
+      <a class="btn small primary" href="/designer/{{$w.Key}}">Bearbeiten</a>
+      {{if $w.Active}}<a class="btn small ghost" href="/neu/{{$w.Key}}" target="_blank">Formular testen</a>{{end}}
+      <a class="btn small ghost" href="/designer/{{$w.Key}}/export.yaml">Export</a>
+      <form method="post" action="/designer/{{$w.Key}}/copy" class="inline"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="name" value="{{.Def.Name}} (Kopie)"><button class="btn small ghost">Kopieren</button></form>
+      {{if $w.Archived}}
+      <form method="post" action="/designer/{{$w.Key}}/archive" class="inline"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="archived" value="0"><button class="btn small">▶ Aktivieren</button></form>
+      {{else}}
+      <details class="dropdown right" style="display:inline-block"><summary class="btn small ghost">⏸ Deaktivieren</summary>
+        <form method="post" action="/designer/{{$w.Key}}/archive" class="card dropform" style="text-align:left;white-space:normal"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="archived" value="1">
+          <b>„{{.Def.Name}}“ deaktivieren</b>
+          <p class="small muted">Der Antrag verschwindet aus „Antrag stellen“. Laufende Vorgänge ({{$w.Open}}) werden normal zu Ende bearbeitet. Jederzeit wieder aktivierbar.</p>
+          <label>Hinweis für Antragstellende <small class="muted">(optional)</small><textarea name="note" rows="2" placeholder="z. B. Bis 31.12. bitte formlos per Mail an it@ – neues Verfahren folgt."></textarea></label>
+          <button class="btn danger">Deaktivieren</button></form></details>
+      {{end}}
+    </td>
+  </tr>
+  {{end}}{{end}}
+  </tbody>
+</table>
+</div>
+{{end}}{{end}}

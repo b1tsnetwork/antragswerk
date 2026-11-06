@@ -1,0 +1,10 @@
+{{define "content"}}{{with .Data}}
+<a class="back" href="/postausgang">← Postausgang</a>
+<div class="mailview card">
+  <div class="mailhdr"><div><small class="muted">An</small> {{.To}}</div><div><small class="muted">Zeit</small> {{dt .At}}</div><div><small class="muted">Status</small> <span class="pill {{if eq .Status "gesendet"}}s-ok{{else if eq .Status "fehler"}}s-bad{{else}}s-muted{{end}}">{{.Status}}</span> {{.Error}}</div></div>
+  <h1>{{.Subject}}</h1>
+  <div class="mailbody pre">{{.Body}}</div>
+  {{if .Link}}<p><a class="btn primary" href="{{.Link}}">Zum Arbeitsschritt öffnen</a> <small class="muted">(Link aus der Mail – im Demo-Modus zum Ausprobieren)</small></p>{{end}}
+  {{if .RequestID}}<p><a href="/v/{{.RequestID}}">Vorgang {{.ReqNumber}} öffnen</a></p>{{end}}
+</div>
+{{end}}{{end}}

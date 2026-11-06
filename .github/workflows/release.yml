@@ -1,0 +1,189 @@
+# Baut und veröffentlicht das Antragswerk:
+#   - Container-Image ghcr.io/<owner>/<repo> (amd64 + arm64) mit SBOM und Herkunftsnachweis
+#   - Programmdateien für Linux, Windows und macOS samt SHA256SUMS.txt
+#   - GitHub Release (nur bei Tags)
+#
+#   push auf main   -> :main, :sha-<kurz> und :latest
+#   Tag v1.2.3      -> :1.2.3, :1.2, :1 und :latest  + GitHub Release
+#   Tag v1.2.3-rc.1 -> nur :1.2.3-rc.1 (kein latest) + GitHub Release als Vorabversion
+name: release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  meta:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      image: ${{ steps.v.outputs.image }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # git describe braucht die Tags
+      - id: v
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "image=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"   # GHCR-Namen klein
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF_NAME#v}"; else v="$(git describe --tags --always | sed 's/^v//')"; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          pre=false; [[ "$GITHUB_REF" == refs/tags/v*-* ]] && pre=true
+          echo "prerelease=$pre" >> "$GITHUB_OUTPUT"
+
+  image:
+    name: Container-Image
+    needs: [ci, meta]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v4 # nur für RUN im arm64-Laufzeit-Image; kompiliert wird nativ
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Anmelden bei ghcr.io
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image-Tags
+        id: tags
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ needs.meta.outputs.image }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-')) }}
+
+      - name: Bauen und veröffentlichen
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: VERSION=${{ needs.meta.outputs.version }}
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: ${{ steps.tags.outputs.labels }}
+          cache-from: type=gha,scope=antragswerk
+          cache-to: type=gha,scope=antragswerk,mode=max
+          provenance: mode=max
+          sbom: true
+
+      - name: Herkunftsnachweis (Attestation)
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ${{ needs.meta.outputs.image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+  binaries:
+    name: Programm ${{ matrix.goos }}/${{ matrix.goarch }}
+    needs: [ci, meta]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: linux, goarch: amd64 }
+          - { goos: linux, goarch: arm64 }
+          - { goos: windows, goarch: amd64 }
+          - { goos: darwin, goarch: arm64 }
+          - { goos: darwin, goarch: amd64 }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Bauen und packen
+        shell: bash
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+          VERSION: ${{ needs.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          ext=""; [ "$GOOS" = windows ] && ext=".exe"
+          name="antragswerk_${VERSION}_${GOOS}_${GOARCH}"
+          out="dist/$name"
+          mkdir -p "$out"
+          go build -trimpath -ldflags="-s -w -X main.version=$VERSION" -o "$out/antragswerk$ext" ./cmd/antragswerk
+          cp README.md config.example.yaml "$out/"
+          cd dist
+          if [ "$GOOS" = windows ]; then zip -qr "$name.zip" "$name"; else tar czf "$name.tar.gz" "$name"; fi
+          rm -rf "$name"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: bin-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+          retention-days: 14
+
+  publish:
+    name: GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [meta, image, binaries]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: bin-*
+          path: dist
+          merge-multiple: true
+
+      - name: Prüfsummen
+        run: cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      - name: Release anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.meta.outputs.version }}
+          IMAGE: ${{ needs.meta.outputs.image }}
+          PRE: ${{ needs.meta.outputs.prerelease }}
+        run: |
+          flags=(--repo "$GITHUB_REPOSITORY" --title "Antragswerk $VERSION" --generate-notes)
+          [ "$PRE" = true ] && flags+=(--prerelease)
+          gh release create "$GITHUB_REF_NAME" dist/* "${flags[@]}" \
+            --notes "Container-Image: \`docker pull $IMAGE:$VERSION\`"

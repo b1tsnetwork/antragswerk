@@ -1,0 +1,30 @@
+# Wöchentliche Update-PRs für GitHub Actions, Go-Module, Docker-Basis-Images und Playwright.
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: Europe/Berlin }
+    commit-message: { prefix: "deps(actions)" }
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: gomod
+    directory: /
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: Europe/Berlin }
+    open-pull-requests-limit: 5
+    commit-message: { prefix: "deps(go)" }
+    groups:
+      go:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: Europe/Berlin }
+    commit-message: { prefix: "deps(docker)" }
+
+  - package-ecosystem: npm
+    directory: /tests/e2e
+    schedule: { interval: monthly, timezone: Europe/Berlin }
+    commit-message: { prefix: "deps(e2e)" }

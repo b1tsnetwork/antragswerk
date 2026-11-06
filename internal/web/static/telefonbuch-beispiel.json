@@ -1,0 +1,867 @@
+{
+  "format": "telefonbuch-org/1",
+  "generated": "2026-11-06T06:00:00Z",
+  "levels": [
+    "Dezernat",
+    "Amt",
+    "Abteilung"
+  ],
+  "people": [
+    {
+      "amt": "IT",
+      "email": "admin@demo-stadt.de",
+      "firstName": "Admin",
+      "function": "Leitung Amt",
+      "id": 1,
+      "lastName": "(Demo)",
+      "manager": "b.koch",
+      "managerEmail": "b.koch@demo-stadt.de",
+      "managerName": "Bernd Koch",
+      "name": "Admin (Demo)",
+      "phone": "-1100",
+      "room": "Rathaus C 1.01",
+      "source": "ad",
+      "unit": 4,
+      "unitKey": "11",
+      "unitName": "IT",
+      "unitPath": "I – Zentrale Verwaltung › 11 – IT",
+      "username": "admin"
+    },
+    {
+      "amt": "IT",
+      "deputies": [
+        "j.hoffmann"
+      ],
+      "email": "t.klein@demo-stadt.de",
+      "firstName": "Thomas",
+      "function": "Stellvertretung Amt",
+      "id": 2,
+      "lastName": "Klein",
+      "manager": "admin",
+      "managerEmail": "admin@demo-stadt.de",
+      "managerName": "Admin (Demo)",
+      "name": "Thomas Klein",
+      "phone": "-1150",
+      "room": "Rathaus C 1.03",
+      "source": "ad",
+      "unit": 4,
+      "unitKey": "11",
+      "unitName": "IT",
+      "unitPath": "I – Zentrale Verwaltung › 11 – IT",
+      "username": "t.klein"
+    },
+    {
+      "amt": "IT",
+      "email": "j.hoffmann@demo-stadt.de",
+      "firstName": "Julia",
+      "id": 3,
+      "lastName": "Hoffmann",
+      "manager": "admin",
+      "managerEmail": "admin@demo-stadt.de",
+      "managerName": "Admin (Demo)",
+      "name": "Julia Hoffmann",
+      "phone": "-1151",
+      "room": "Rathaus C 1.04",
+      "source": "ad",
+      "unit": 4,
+      "unitKey": "11",
+      "unitName": "IT",
+      "unitPath": "I – Zentrale Verwaltung › 11 – IT",
+      "username": "j.hoffmann"
+    },
+    {
+      "amt": "Personal",
+      "deputies": [
+        "k.richter"
+      ],
+      "email": "a.becker@demo-stadt.de",
+      "firstName": "Anna",
+      "function": "Leitung Amt",
+      "id": 4,
+      "lastName": "Becker",
+      "manager": "b.koch",
+      "managerEmail": "b.koch@demo-stadt.de",
+      "managerName": "Bernd Koch",
+      "name": "Anna Becker",
+      "phone": "-1012",
+      "room": "Rathaus A 1.12",
+      "source": "ad",
+      "unit": 2,
+      "unitKey": "10",
+      "unitName": "Personal",
+      "unitPath": "I – Zentrale Verwaltung › 10 – Personal",
+      "username": "a.becker"
+    },
+    {
+      "amt": "Zentrale Dienste",
+      "email": "k.richter@demo-stadt.de",
+      "firstName": "Klaus",
+      "function": "Leitung Abteilung",
+      "id": 5,
+      "lastName": "Richter",
+      "manager": "a.becker",
+      "managerEmail": "a.becker@demo-stadt.de",
+      "managerName": "Anna Becker",
+      "name": "Klaus Richter",
+      "phone": "-1030",
+      "room": "Rathaus A 0.10",
+      "source": "ad",
+      "unit": 3,
+      "unitKey": "10.3",
+      "unitName": "Zentrale Dienste",
+      "unitPath": "I – Zentrale Verwaltung › 10 – Personal › 10.3 – Zentrale Dienste",
+      "username": "k.richter"
+    },
+    {
+      "amt": "Kämmerei",
+      "email": "s.wagner@demo-stadt.de",
+      "firstName": "Sabine",
+      "function": "Leitung Amt",
+      "id": 6,
+      "lastName": "Wagner",
+      "name": "Sabine Wagner",
+      "phone": "-2000",
+      "room": "Rathaus A 2.01",
+      "source": "ad",
+      "unit": 6,
+      "unitKey": "20",
+      "unitName": "Kämmerei",
+      "unitPath": "II – Finanzen › 20 – Kämmerei",
+      "username": "s.wagner"
+    },
+    {
+      "amt": "Kämmerei",
+      "email": "f.krause@demo-stadt.de",
+      "firstName": "Frank",
+      "function": "Stellvertretung Amt",
+      "id": 7,
+      "lastName": "Krause",
+      "manager": "s.wagner",
+      "managerEmail": "s.wagner@demo-stadt.de",
+      "managerName": "Sabine Wagner",
+      "name": "Frank Krause",
+      "phone": "-2050",
+      "room": "Rathaus A 2.08",
+      "source": "ad",
+      "unit": 6,
+      "unitKey": "20",
+      "unitName": "Kämmerei",
+      "unitPath": "II – Finanzen › 20 – Kämmerei",
+      "username": "f.krause"
+    },
+    {
+      "amt": "Bürgerservice",
+      "email": "m.schulz@demo-stadt.de",
+      "firstName": "Markus",
+      "function": "Leitung Amt",
+      "id": 8,
+      "lastName": "Schulz",
+      "name": "Markus Schulz",
+      "phone": "-3200",
+      "room": "Rathaus B 0.04",
+      "source": "ad",
+      "unit": 8,
+      "unitKey": "32",
+      "unitName": "Bürgerservice",
+      "unitPath": "III – Bürgerdienste › 32 – Bürgerservice",
+      "username": "m.schulz"
+    },
+    {
+      "amt": "Bürgerservice",
+      "email": "p.neumann@demo-stadt.de",
+      "firstName": "Petra",
+      "id": 9,
+      "lastName": "Neumann",
+      "manager": "m.schulz",
+      "managerEmail": "m.schulz@demo-stadt.de",
+      "managerName": "Markus Schulz",
+      "name": "Petra Neumann",
+      "phone": "-3221",
+      "room": "Rathaus B 0.04",
+      "source": "ad",
+      "unit": 8,
+      "unitKey": "32",
+      "unitName": "Bürgerservice",
+      "unitPath": "III – Bürgerdienste › 32 – Bürgerservice",
+      "username": "p.neumann"
+    },
+    {
+      "amt": "Ordnungsamt",
+      "email": "r.mueller@demo-stadt.de",
+      "firstName": "René",
+      "function": "Leitung Amt",
+      "id": 10,
+      "lastName": "Müller",
+      "name": "René Müller",
+      "phone": "-3100",
+      "room": "Rathaus B 1.01",
+      "source": "ad",
+      "unit": 9,
+      "unitKey": "32.1",
+      "unitName": "Ordnungsamt",
+      "unitPath": "III – Bürgerdienste › 32.1 – Ordnungsamt",
+      "username": "r.mueller"
+    },
+    {
+      "amt": "Ordnungsamt",
+      "email": "l.weber@demo-stadt.de",
+      "firstName": "Laura",
+      "id": 11,
+      "lastName": "Weber",
+      "manager": "r.mueller",
+      "managerEmail": "r.mueller@demo-stadt.de",
+      "managerName": "René Müller",
+      "name": "Laura Weber",
+      "phone": "-3210",
+      "room": "Rathaus B 1.07",
+      "source": "ad",
+      "unit": 9,
+      "unitKey": "32.1",
+      "unitName": "Ordnungsamt",
+      "unitPath": "III – Bürgerdienste › 32.1 – Ordnungsamt",
+      "username": "l.weber"
+    },
+    {
+      "amt": "Schulverwaltung",
+      "email": "n.vogel@demo-stadt.de",
+      "firstName": "Nina",
+      "function": "Leitung Amt",
+      "id": 12,
+      "lastName": "Vogel",
+      "name": "Nina Vogel",
+      "phone": "-4000",
+      "room": "Schulzentrum 1.02",
+      "source": "ad",
+      "unit": 11,
+      "unitKey": "40",
+      "unitName": "Schulverwaltung",
+      "unitPath": "IV – Jugend, Schule, Soziales › 40 – Schulverwaltung",
+      "username": "n.vogel"
+    },
+    {
+      "amt": "Schulverwaltung",
+      "email": "o.brandt@demo-stadt.de",
+      "firstName": "Ole",
+      "id": 13,
+      "lastName": "Brandt",
+      "manager": "n.vogel",
+      "managerEmail": "n.vogel@demo-stadt.de",
+      "managerName": "Nina Vogel",
+      "name": "Ole Brandt",
+      "phone": "-4012",
+      "room": "Schulzentrum 1.05",
+      "source": "ad",
+      "unit": 11,
+      "unitKey": "40",
+      "unitName": "Schulverwaltung",
+      "unitPath": "IV – Jugend, Schule, Soziales › 40 – Schulverwaltung",
+      "username": "o.brandt"
+    },
+    {
+      "amt": "Jugendamt",
+      "email": "m.lange@demo-stadt.de",
+      "firstName": "Miriam",
+      "function": "Leitung Amt",
+      "id": 14,
+      "lastName": "Lange",
+      "name": "Miriam Lange",
+      "phone": "-5100",
+      "room": "Haus Jugend 2.01",
+      "source": "ad",
+      "unit": 12,
+      "unitKey": "51",
+      "unitName": "Jugendamt",
+      "unitPath": "IV – Jugend, Schule, Soziales › 51 – Jugendamt",
+      "username": "m.lange"
+    },
+    {
+      "amt": "Bauamt",
+      "email": "c.fischer@demo-stadt.de",
+      "firstName": "Christina",
+      "function": "Leitung Amt",
+      "id": 15,
+      "lastName": "Fischer",
+      "name": "Christina Fischer",
+      "phone": "-6000",
+      "room": "Technisches Rathaus 3.01",
+      "source": "ad",
+      "unit": 14,
+      "unitKey": "60",
+      "unitName": "Bauamt",
+      "unitPath": "V – Planen und Bauen › 60 – Bauamt",
+      "username": "c.fischer"
+    },
+    {
+      "amt": "Bauamt",
+      "email": "d.yilmaz@demo-stadt.de",
+      "firstName": "Deniz",
+      "function": "Stellvertretung Amt",
+      "id": 16,
+      "lastName": "Yılmaz",
+      "manager": "c.fischer",
+      "managerEmail": "c.fischer@demo-stadt.de",
+      "managerName": "Christina Fischer",
+      "name": "Deniz Yılmaz",
+      "phone": "-6012",
+      "room": "Technisches Rathaus 3.12",
+      "source": "ad",
+      "unit": 14,
+      "unitKey": "60",
+      "unitName": "Bauamt",
+      "unitPath": "V – Planen und Bauen › 60 – Bauamt",
+      "username": "d.yilmaz"
+    },
+    {
+      "amt": "Dezernat I",
+      "email": "b.koch@demo-stadt.de",
+      "firstName": "Bernd",
+      "function": "Leitung Dezernat",
+      "id": 17,
+      "lastName": "Koch",
+      "name": "Bernd Koch",
+      "phone": "-1001",
+      "room": "Rathaus A 3.01",
+      "source": "ad",
+      "unit": 1,
+      "unitKey": "I",
+      "unitName": "Zentrale Verwaltung",
+      "unitPath": "I – Zentrale Verwaltung",
+      "username": "b.koch"
+    },
+    {
+      "amt": "Zentrale Dienste",
+      "firstName": "Pforte",
+      "id": 18,
+      "lastName": "Rathaus",
+      "manager": "k.richter",
+      "managerEmail": "k.richter@demo-stadt.de",
+      "managerName": "Klaus Richter",
+      "name": "Pforte Rathaus",
+      "phone": "-0",
+      "room": "Rathaus A EG",
+      "source": "manual",
+      "unit": 3,
+      "unitKey": "10.3",
+      "unitName": "Zentrale Dienste",
+      "unitPath": "I – Zentrale Verwaltung › 10 – Personal › 10.3 – Zentrale Dienste"
+    }
+  ],
+  "rooms": [
+    {
+      "name": "Haus Jugend 2.01",
+      "people": 1,
+      "unit": 12,
+      "unitKey": "51"
+    },
+    {
+      "name": "Rathaus A 0.10",
+      "people": 1,
+      "unit": 3,
+      "unitKey": "10.3"
+    },
+    {
+      "name": "Rathaus A 1.12",
+      "people": 1,
+      "unit": 2,
+      "unitKey": "10"
+    },
+    {
+      "name": "Rathaus A 2.01",
+      "people": 1,
+      "unit": 6,
+      "unitKey": "20"
+    },
+    {
+      "name": "Rathaus A 2.08",
+      "people": 1,
+      "unit": 6,
+      "unitKey": "20"
+    },
+    {
+      "name": "Rathaus A 3.01",
+      "people": 1,
+      "unit": 1,
+      "unitKey": "I"
+    },
+    {
+      "name": "Rathaus A EG",
+      "people": 1,
+      "unit": 3,
+      "unitKey": "10.3"
+    },
+    {
+      "name": "Rathaus B 0.04",
+      "people": 2,
+      "unit": 8,
+      "unitKey": "32"
+    },
+    {
+      "name": "Rathaus B 1.01",
+      "people": 1,
+      "unit": 9,
+      "unitKey": "32.1"
+    },
+    {
+      "name": "Rathaus B 1.07",
+      "people": 1,
+      "unit": 9,
+      "unitKey": "32.1"
+    },
+    {
+      "name": "Rathaus C 1.01",
+      "people": 1,
+      "unit": 4,
+      "unitKey": "11"
+    },
+    {
+      "name": "Rathaus C 1.03",
+      "people": 1,
+      "unit": 4,
+      "unitKey": "11"
+    },
+    {
+      "name": "Rathaus C 1.04",
+      "people": 1,
+      "unit": 4,
+      "unitKey": "11"
+    },
+    {
+      "name": "Schulzentrum 1.02",
+      "people": 1,
+      "unit": 11,
+      "unitKey": "40"
+    },
+    {
+      "name": "Schulzentrum 1.05",
+      "people": 1,
+      "unit": 11,
+      "unitKey": "40"
+    },
+    {
+      "name": "Technisches Rathaus 3.01",
+      "people": 1,
+      "unit": 14,
+      "unitKey": "60"
+    },
+    {
+      "name": "Technisches Rathaus 3.12",
+      "people": 1,
+      "unit": 14,
+      "unitKey": "60"
+    }
+  ],
+  "units": [
+    {
+      "depth": 1,
+      "deputies": [],
+      "head": {
+        "email": "b.koch@demo-stadt.de",
+        "id": 17,
+        "name": "Bernd Koch",
+        "phone": "-1001",
+        "username": "b.koch"
+      },
+      "id": 1,
+      "key": "I",
+      "label": "I – Zentrale Verwaltung",
+      "leaders": [
+        {
+          "email": "b.koch@demo-stadt.de",
+          "id": 17,
+          "name": "Bernd Koch",
+          "phone": "-1001",
+          "username": "b.koch"
+        }
+      ],
+      "level": "Dezernat",
+      "members": 1,
+      "name": "Zentrale Verwaltung",
+      "path": "I – Zentrale Verwaltung",
+      "short": "I",
+      "sort": 0,
+      "top": "I – Zentrale Verwaltung"
+    },
+    {
+      "depth": 2,
+      "deputies": [],
+      "email": "personal@demo-stadt.de",
+      "head": {
+        "email": "a.becker@demo-stadt.de",
+        "id": 4,
+        "name": "Anna Becker",
+        "phone": "-1012",
+        "username": "a.becker"
+      },
+      "id": 2,
+      "key": "10",
+      "label": "10 – Personal",
+      "leaders": [
+        {
+          "email": "a.becker@demo-stadt.de",
+          "id": 4,
+          "name": "Anna Becker",
+          "phone": "-1012",
+          "username": "a.becker"
+        }
+      ],
+      "level": "Amt",
+      "members": 1,
+      "name": "Personal",
+      "parent": 1,
+      "parentKey": "I",
+      "path": "I – Zentrale Verwaltung › 10 – Personal",
+      "short": "10",
+      "sort": 1,
+      "top": "I – Zentrale Verwaltung"
+    },
+    {
+      "depth": 3,
+      "deputies": [],
+      "email": "zentrale-dienste@demo-stadt.de",
+      "head": {
+        "email": "k.richter@demo-stadt.de",
+        "id": 5,
+        "name": "Klaus Richter",
+        "phone": "-1030",
+        "username": "k.richter"
+      },
+      "id": 3,
+      "key": "10.3",
+      "label": "10.3 – Zentrale Dienste",
+      "leaders": [
+        {
+          "email": "k.richter@demo-stadt.de",
+          "id": 5,
+          "name": "Klaus Richter",
+          "phone": "-1030",
+          "username": "k.richter"
+        }
+      ],
+      "level": "Abteilung",
+      "members": 2,
+      "name": "Zentrale Dienste",
+      "parent": 2,
+      "parentKey": "10",
+      "path": "I – Zentrale Verwaltung › 10 – Personal › 10.3 – Zentrale Dienste",
+      "short": "10.3",
+      "sort": 2,
+      "top": "I – Zentrale Verwaltung"
+    },
+    {
+      "depth": 2,
+      "deputies": [
+        {
+          "email": "t.klein@demo-stadt.de",
+          "id": 2,
+          "name": "Thomas Klein",
+          "phone": "-1150",
+          "username": "t.klein"
+        }
+      ],
+      "email": "it@demo-stadt.de",
+      "head": {
+        "email": "admin@demo-stadt.de",
+        "id": 1,
+        "name": "Admin (Demo)",
+        "phone": "-1100",
+        "username": "admin"
+      },
+      "id": 4,
+      "key": "11",
+      "label": "11 – IT",
+      "leaders": [
+        {
+          "email": "admin@demo-stadt.de",
+          "id": 1,
+          "name": "Admin (Demo)",
+          "phone": "-1100",
+          "username": "admin"
+        }
+      ],
+      "level": "Amt",
+      "members": 3,
+      "name": "IT",
+      "parent": 1,
+      "parentKey": "I",
+      "path": "I – Zentrale Verwaltung › 11 – IT",
+      "short": "11",
+      "sort": 3,
+      "top": "I – Zentrale Verwaltung"
+    },
+    {
+      "depth": 1,
+      "deputies": [],
+      "id": 5,
+      "key": "II",
+      "label": "II – Finanzen",
+      "leaders": [],
+      "level": "Dezernat",
+      "members": 0,
+      "name": "Finanzen",
+      "path": "II – Finanzen",
+      "short": "II",
+      "sort": 4,
+      "top": "II – Finanzen"
+    },
+    {
+      "depth": 2,
+      "deputies": [
+        {
+          "email": "f.krause@demo-stadt.de",
+          "id": 7,
+          "name": "Frank Krause",
+          "phone": "-2050",
+          "username": "f.krause"
+        }
+      ],
+      "email": "kaemmerei@demo-stadt.de",
+      "head": {
+        "email": "s.wagner@demo-stadt.de",
+        "id": 6,
+        "name": "Sabine Wagner",
+        "phone": "-2000",
+        "username": "s.wagner"
+      },
+      "id": 6,
+      "key": "20",
+      "label": "20 – Kämmerei",
+      "leaders": [
+        {
+          "email": "s.wagner@demo-stadt.de",
+          "id": 6,
+          "name": "Sabine Wagner",
+          "phone": "-2000",
+          "username": "s.wagner"
+        }
+      ],
+      "level": "Amt",
+      "members": 2,
+      "name": "Kämmerei",
+      "parent": 5,
+      "parentKey": "II",
+      "path": "II – Finanzen › 20 – Kämmerei",
+      "short": "20",
+      "sort": 5,
+      "top": "II – Finanzen"
+    },
+    {
+      "depth": 1,
+      "deputies": [],
+      "id": 7,
+      "key": "III",
+      "label": "III – Bürgerdienste",
+      "leaders": [],
+      "level": "Dezernat",
+      "members": 0,
+      "name": "Bürgerdienste",
+      "path": "III – Bürgerdienste",
+      "short": "III",
+      "sort": 6,
+      "top": "III – Bürgerdienste"
+    },
+    {
+      "depth": 2,
+      "deputies": [],
+      "email": "buergerservice@demo-stadt.de",
+      "head": {
+        "email": "m.schulz@demo-stadt.de",
+        "id": 8,
+        "name": "Markus Schulz",
+        "phone": "-3200",
+        "username": "m.schulz"
+      },
+      "id": 8,
+      "key": "32",
+      "label": "32 – Bürgerservice",
+      "leaders": [
+        {
+          "email": "m.schulz@demo-stadt.de",
+          "id": 8,
+          "name": "Markus Schulz",
+          "phone": "-3200",
+          "username": "m.schulz"
+        }
+      ],
+      "level": "Amt",
+      "members": 2,
+      "name": "Bürgerservice",
+      "parent": 7,
+      "parentKey": "III",
+      "path": "III – Bürgerdienste › 32 – Bürgerservice",
+      "short": "32",
+      "sort": 7,
+      "top": "III – Bürgerdienste"
+    },
+    {
+      "depth": 2,
+      "deputies": [],
+      "email": "ordnungsamt@demo-stadt.de",
+      "head": {
+        "email": "r.mueller@demo-stadt.de",
+        "id": 10,
+        "name": "René Müller",
+        "phone": "-3100",
+        "username": "r.mueller"
+      },
+      "id": 9,
+      "key": "32.1",
+      "label": "32.1 – Ordnungsamt",
+      "leaders": [
+        {
+          "email": "r.mueller@demo-stadt.de",
+          "id": 10,
+          "name": "René Müller",
+          "phone": "-3100",
+          "username": "r.mueller"
+        }
+      ],
+      "level": "Amt",
+      "members": 2,
+      "name": "Ordnungsamt",
+      "parent": 7,
+      "parentKey": "III",
+      "path": "III – Bürgerdienste › 32.1 – Ordnungsamt",
+      "short": "32.1",
+      "sort": 8,
+      "top": "III – Bürgerdienste"
+    },
+    {
+      "depth": 1,
+      "deputies": [],
+      "id": 10,
+      "key": "IV",
+      "label": "IV – Jugend, Schule, Soziales",
+      "leaders": [],
+      "level": "Dezernat",
+      "members": 0,
+      "name": "Jugend, Schule, Soziales",
+      "path": "IV – Jugend, Schule, Soziales",
+      "short": "IV",
+      "sort": 9,
+      "top": "IV – Jugend, Schule, Soziales"
+    },
+    {
+      "depth": 2,
+      "deputies": [],
+      "email": "schulamt@demo-stadt.de",
+      "head": {
+        "email": "n.vogel@demo-stadt.de",
+        "id": 12,
+        "name": "Nina Vogel",
+        "phone": "-4000",
+        "username": "n.vogel"
+      },
+      "id": 11,
+      "key": "40",
+      "label": "40 – Schulverwaltung",
+      "leaders": [
+        {
+          "email": "n.vogel@demo-stadt.de",
+          "id": 12,
+          "name": "Nina Vogel",
+          "phone": "-4000",
+          "username": "n.vogel"
+        }
+      ],
+      "level": "Amt",
+      "members": 2,
+      "name": "Schulverwaltung",
+      "parent": 10,
+      "parentKey": "IV",
+      "path": "IV – Jugend, Schule, Soziales › 40 – Schulverwaltung",
+      "short": "40",
+      "sort": 10,
+      "top": "IV – Jugend, Schule, Soziales"
+    },
+    {
+      "depth": 2,
+      "deputies": [],
+      "email": "jugendamt@demo-stadt.de",
+      "head": {
+        "email": "m.lange@demo-stadt.de",
+        "id": 14,
+        "name": "Miriam Lange",
+        "phone": "-5100",
+        "username": "m.lange"
+      },
+      "id": 12,
+      "key": "51",
+      "label": "51 – Jugendamt",
+      "leaders": [
+        {
+          "email": "m.lange@demo-stadt.de",
+          "id": 14,
+          "name": "Miriam Lange",
+          "phone": "-5100",
+          "username": "m.lange"
+        }
+      ],
+      "level": "Amt",
+      "members": 1,
+      "name": "Jugendamt",
+      "parent": 10,
+      "parentKey": "IV",
+      "path": "IV – Jugend, Schule, Soziales › 51 – Jugendamt",
+      "short": "51",
+      "sort": 11,
+      "top": "IV – Jugend, Schule, Soziales"
+    },
+    {
+      "depth": 1,
+      "deputies": [],
+      "id": 13,
+      "key": "V",
+      "label": "V – Planen und Bauen",
+      "leaders": [],
+      "level": "Dezernat",
+      "members": 0,
+      "name": "Planen und Bauen",
+      "path": "V – Planen und Bauen",
+      "short": "V",
+      "sort": 12,
+      "top": "V – Planen und Bauen"
+    },
+    {
+      "depth": 2,
+      "deputies": [
+        {
+          "email": "d.yilmaz@demo-stadt.de",
+          "id": 16,
+          "name": "Deniz Yılmaz",
+          "phone": "-6012",
+          "username": "d.yilmaz"
+        }
+      ],
+      "email": "bauamt@demo-stadt.de",
+      "head": {
+        "email": "c.fischer@demo-stadt.de",
+        "id": 15,
+        "name": "Christina Fischer",
+        "phone": "-6000",
+        "username": "c.fischer"
+      },
+      "id": 14,
+      "key": "60",
+      "label": "60 – Bauamt",
+      "leaders": [
+        {
+          "email": "c.fischer@demo-stadt.de",
+          "id": 15,
+          "name": "Christina Fischer",
+          "phone": "-6000",
+          "username": "c.fischer"
+        }
+      ],
+      "level": "Amt",
+      "members": 2,
+      "name": "Bauamt",
+      "parent": 13,
+      "parentKey": "V",
+      "path": "V – Planen und Bauen › 60 – Bauamt",
+      "short": "60",
+      "sort": 13,
+      "top": "V – Planen und Bauen"
+    }
+  ],
+  "version": "807f6638792e2631"
+}

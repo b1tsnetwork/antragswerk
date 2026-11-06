@@ -1,0 +1,113 @@
+# Prüft das Antragswerk bei jedem Pull Request, bei Pushes auf Arbeitszweige und vor jedem Release
+# (release.yml ruft diesen Workflow auf):
+#   go      gofmt, go vet, go mod tidy, Tests (Race), govulncheck, Syntax aller JavaScript-Dateien
+#   e2e     Demo-Server starten, Rauchtest im Browser (tests/e2e/smoke.mjs): jeder Menüpunkt klickbar
+#           und schnell – auch mit 10 Tabs –, Live-Aktualisierung in allen Tabs, keine JS-Fehler
+#   docker  Image baut (ohne Veröffentlichung)
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main] # main läuft über release.yml (ruft ci auf)
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_call' }}
+
+jobs:
+  go:
+    name: Go – Format, Vet, Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: go mod tidy
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum || (echo "::error::go.mod/go.sum nicht aktuell – lokal 'go mod tidy' ausführen und einchecken" && exit 1)
+
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && echo "::error::gofmt -w ausführen" && exit 1)
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Tests (Race)
+        run: go test -race -count=1 ./...
+
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+      - name: JavaScript-Syntax
+        run: |
+          for f in internal/web/static/*.js tests/e2e/*.mjs; do node --check "$f" || exit 1; done
+
+  e2e:
+    name: Oberfläche – Rauchtest
+    needs: go
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Bauen
+        run: go build -o "$RUNNER_TEMP/antragswerk" ./cmd/antragswerk
+
+      - name: Demo-Server starten
+        run: |
+          mkdir -p "$RUNNER_TEMP/aw" && cd "$RUNNER_TEMP/aw"
+          # ohne config.yaml legt das Antragswerk eine Demo-Konfiguration an
+          ANTRAGSWERK_BASE_URL=http://localhost:8080 nohup "$RUNNER_TEMP/antragswerk" > server.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs http://localhost:8080/healthz >/dev/null && exit 0; sleep 1; done
+          cat server.log; exit 1
+
+      - name: Playwright installieren
+        working-directory: tests/e2e
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Rauchtest
+        working-directory: tests/e2e
+        run: node smoke.mjs
+
+      - name: Server-Protokoll
+        if: always()
+        run: cat "$RUNNER_TEMP/aw/server.log" || true
+
+  docker:
+    name: Docker-Image baut
+    needs: go
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Bauen (ohne Veröffentlichung)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          build-args: VERSION=ci-${{ github.sha }}
+          cache-from: type=gha,scope=antragswerk
+          cache-to: type=gha,scope=antragswerk,mode=max

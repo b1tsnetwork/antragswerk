@@ -1,0 +1,6 @@
+{{define "content"}}
+<div class="pagehead"><div><h1>Einstellungen</h1><p class="muted">Name, Farben, Startseite und alle Texte der Oberfläche und Mails anpassen. Änderungen gelten sofort für alle.</p></div></div>
+<div id="settings" class="master"><p class="muted">wird geladen …</p></div>
+<script type="application/json" id="settings-data">{{json .Data}}</script>
+<script src="/static/settings.js?v={{$.AssetV}}" defer></script>
+{{end}}

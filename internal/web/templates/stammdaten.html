@@ -1,0 +1,6 @@
+{{define "content"}}
+<div class="pagehead"><div><h1>Stammdaten</h1><p class="muted">Kataloge, Stellen, Variablen und Skriptbausteine – gemeinsam genutzt von allen Abläufen. Änderungen wirken sofort, auch in laufenden Vorgängen.</p></div></div>
+<div id="master" class="master"><p class="muted">wird geladen …</p></div>
+<script type="application/json" id="master-data">{{json .Data}}</script>
+<script src="/static/master.js?v={{$.AssetV}}" defer></script>
+{{end}}

@@ -1,0 +1,28 @@
+{{define "content"}}
+<div class="pagehead"><div><h1>{{t "neu.title"}}</h1><p class="muted">{{t "neu.lead"}}</p></div>
+  <input type="search" class="tilesearch" placeholder="{{t "neu.search"}}" data-filter=".wftile" autofocus></div>
+{{range .Data.Groups}}
+<h2 class="grouphead">{{.Name}}</h2>
+<div class="wftiles">
+  {{range .Items}}{{with .Active.Def}}
+  <a class="wftile" href="/neu/{{.Key}}" style="--c: {{safeColor .Color}}" data-text="{{.Name}} {{.Description}} {{.Category}}">
+    <span class="qico">{{.Icon}}</span>
+    <span class="wfbody"><b>{{.Name}}</b><span class="muted">{{.Description}}</span>
+      <span class="wfmeta"><span>{{len .Form.Sections}} Abschnitte</span><span>{{len .Steps}} Schritte</span></span></span>
+    <span class="go">→</span>
+  </a>{{end}}{{end}}
+</div>
+{{else}}<div class="card empty">{{t "neu.none"}}</div>{{end}}
+{{if .Data.Disabled}}
+<h2 class="grouphead">Deaktiviert <small class="muted" style="text-transform:none;letter-spacing:0">– nur für die Administration sichtbar</small></h2>
+<div class="wftiles">
+  {{range .Data.Disabled}}{{$w := .}}{{with .Active.Def}}
+  <a class="wftile off" href="/designer/{{.Key}}" style="--c: {{safeColor .Color}}" data-text="{{.Name}} {{.Description}}">
+    <span class="qico">{{.Icon}}</span>
+    <span class="wfbody"><b>{{.Name}}</b><span class="muted">{{if $w.DisabledNote}}{{$w.DisabledNote}}{{else}}Kann derzeit nicht beantragt werden.{{end}}</span>
+      <span class="wfmeta"><span class="pill s-muted">deaktiviert</span>{{if $w.DisabledAt.Valid}}<span>seit {{dt $w.DisabledAt}} · {{$w.DisabledBy}}</span>{{end}}</span></span>
+    <span class="go">⚙</span>
+  </a>{{end}}{{end}}
+</div>
+{{end}}
+{{end}}

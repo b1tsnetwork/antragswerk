@@ -1,0 +1,147 @@
+{{define "content"}}{{with .Data}}{{$d := .}}
+<div class="pagehead homehead">
+  <div><h1>{{tf "home.greeting" $.Session.Display}}</h1>
+    <p class="muted">{{if .Inbox}}{{tf "home.some" (len .Inbox)}}{{if .Overdue}} <b class="bad">{{.Overdue}} überfällig.</b>{{end}}{{else}}{{t "home.none"}}{{end}}</p></div>
+  <div class="actions">
+    {{if .Views}}<div class="seg viewswitch">{{range .Views}}<a class="{{if .On}}on{{end}}" href="/?ansicht={{.Key}}" title="{{.Label}}"><span>{{.Icon}}</span> {{.Label}}</a>{{end}}</div>{{end}}
+    <a class="btn primary" href="/neu">{{t "home.btn_new"}}</a>
+  </div>
+</div>
+{{if .Welcome}}<div class="callout info welcome">{{md .Welcome}}</div>{{end}}
+
+{{if eq .View "standard"}}
+<div class="stats">
+  <a class="stat {{if .Overdue}}alert{{end}}" href="/aufgaben"><b>{{len .Inbox}}</b><span>{{t "home.stat_tasks"}}</span></a>
+  <a class="stat" href="/vorgaenge?scope=meine&status=offen"><b>{{len .Mine}}</b><span>{{t "home.stat_mine"}}</span></a>
+  <a class="stat" href="/vorgaenge?status=rueckfrage"><b>{{index .Counts "rueckfrage"}}</b><span>{{t "home.stat_question"}}</span></a>
+  <a class="stat" href="/vorgaenge?status=laufend"><b>{{index .Counts "laufend"}}</b><span>{{t "home.stat_running"}}</span></a>
+  <a class="stat" href="/vorgaenge?status=abgeschlossen"><b>{{index .Counts "abgeschlossen"}}</b><span>{{t "home.stat_done"}}</span></a>
+</div>
+<div class="grid2 wide-left">
+  <div>
+    <div class="card">
+      <div class="cardhead"><h2>{{t "home.tasks"}}</h2><a class="small" href="/aufgaben">alle →</a></div>
+      {{template "tasklist" .Inbox}}
+    </div>
+    <div class="card">
+      <div class="cardhead"><h2>{{t "home.mine"}}</h2><a class="small" href="/vorgaenge?scope=meine&status=">alle →</a></div>
+      {{if .Mine}}<ul class="reqlist">{{range .Mine}}{{template "reqrow" .}}{{end}}</ul>
+      {{else}}<div class="empty">{{t "home.mine_empty"}}</div>{{end}}
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <div class="cardhead"><h2>{{t "home.quick"}}</h2><a class="small" href="/neu">alle →</a></div>
+      <div class="quicktiles">{{range .Workflows}}{{with .Active.Def}}
+        <a class="qtile" href="/neu/{{.Key}}" style="--c: {{safeColor .Color}}"><span class="qico">{{.Icon}}</span><span>{{.Name}}</span></a>{{end}}{{end}}
+      </div>
+    </div>
+    <div class="card">
+      <h2>{{t "home.activity"}}</h2>
+      <ul class="feed">{{range .Recent}}
+        <li class="j-{{.Kind}}"><a href="/v/{{.RequestID}}"><span class="mono small">{{.ReqNumber}}</span> {{.Msg}}</a><small class="muted">{{rel .At}} · {{.ActorName}}</small></li>
+      {{else}}<li class="muted">Noch keine Aktivität.</li>{{end}}</ul>
+    </div>
+  </div>
+</div>
+{{end}}
+
+{{if eq .View "kacheln"}}
+<div class="portal">
+  <div class="portal-main">
+    <h2 class="portal-title">{{t "portal.title"}}</h2>
+    <p class="muted">{{t "portal.lead"}}</p>
+    <input type="search" class="tilesearch big" placeholder="{{t "neu.search"}}" data-filter=".ptile" autofocus>
+    {{range .Groups}}
+    <h3 class="grouphead">{{.Name}}</h3>
+    <div class="ptiles">{{range .Items}}{{with .Active.Def}}
+      <a class="ptile" href="/neu/{{.Key}}" style="--c: {{safeColor .Color}}" data-text="{{.Name}} {{.Description}}">
+        <span class="pico">{{.Icon}}</span><b>{{.Name}}</b><small>{{.Description}}</small></a>{{end}}{{end}}
+    </div>
+    {{end}}
+  </div>
+  <aside class="portal-side">
+    {{if .Inbox}}<a class="card portal-inbox" href="/aufgaben"><b>{{len .Inbox}}</b><span>{{t "home.tasks"}}{{if .Overdue}} · <span class="bad">{{.Overdue}} überfällig</span>{{end}}</span><span class="go">→</span></a>{{end}}
+    <div class="card">
+      <div class="cardhead"><h2>{{t "portal.status"}}</h2><a class="small" href="/vorgaenge?scope=meine&status=">alle →</a></div>
+      {{if .Mine}}<ul class="mini-req">{{range .Mine}}
+        <li><a href="/v/{{.ID}}"><span class="rtop"><span class="mono small">{{.Number}}</span>{{template "statuspill" .Status}}</span><b>{{.Title}}</b>
+          <span class="bar"><i style="width: {{pct .DoneN .Total}}%"></i></span>{{if .Current}}<small class="muted">jetzt: {{.Current}}</small>{{end}}</a></li>{{end}}</ul>
+      {{else}}<div class="empty">{{t "home.mine_empty"}}</div>{{end}}
+    </div>
+  </aside>
+</div>
+{{end}}
+
+{{if eq .View "aufgaben"}}
+<div class="pagehead" style="margin-top:-8px"><div><h2 style="margin:0">{{t "work.title"}}</h2><p class="muted small" style="margin:2px 0 0">{{t "work.lead"}}</p></div>
+  {{if .Staff}}<div class="seg"><a class="{{if not .All}}on{{end}}" href="/?ansicht=aufgaben">Meine Stellen</a><a class="{{if .All}}on{{end}}" href="/?ansicht=aufgaben&alle=1">Alle Stellen</a></div>{{end}}</div>
+{{if .Baskets}}
+<div class="baskets">
+  {{range .Baskets}}
+  <div class="card basket">
+    <div class="cardhead"><h2>{{.Label}}</h2><span class="small">{{len .Items}} offen{{if .Overdue}} · <b class="bad">{{.Overdue}} überfällig</b>{{end}}</span></div>
+    {{template "tasklist" .Items}}
+  </div>
+  {{end}}
+</div>
+{{else}}<div class="card empty"><div class="big-ico">✓</div>{{t "home.tasks_empty"}}</div>{{end}}
+{{end}}
+
+{{if eq .View "kanban"}}
+<h2 style="margin:0 0 12px">{{t "kanban.title"}}</h2>
+<div class="kanban">
+  {{range .Columns}}
+  <div class="kcol k-{{.Tone}}">
+    <div class="kcol-h"><b>{{.Label}}</b><span class="kn">{{len .Items}}</span></div>
+    <div class="kcards">
+      {{range .Items}}
+      <a class="kcard{{if .Overdue}} overdue{{end}}" href="/v/{{.ID}}">
+        <span class="rtop"><span class="mono small">{{.Number}}</span>{{if .Overdue}}<span class="pill s-bad">Frist</span>{{end}}</span>
+        <b>{{.Title}}</b>
+        <small class="muted">{{.WfName}}</small>
+        {{if and .Current (ne .Status "abgeschlossen")}}<small class="cur">▸ {{.Current}}</small>{{end}}
+        {{if .Assignees}}<small class="muted">👥 {{join .Assignees ", "}}</small>{{end}}
+        <span class="kfoot"><span class="bar"><i style="width: {{pct .DoneN .Total}}%"></i></span><small>{{.DoneN}}/{{.Total}}</small><small class="muted">{{rel .UpdatedAt}}</small></span>
+      </a>
+      {{else}}<div class="kempty">–</div>{{end}}
+    </div>
+  </div>
+  {{end}}
+</div>
+{{end}}
+
+{{if eq .View "leitstand"}}{{with .Leit}}
+<h2 style="margin:0 0 4px">{{t "leit.title"}}</h2><p class="muted small" style="margin:0 0 14px">{{t "leit.lead"}}</p>
+<div class="stats">{{range .KPIs}}<div class="stat kpi tone-{{.Tone}}"><b>{{.Value}}</b><span>{{.Label}}</span><small class="muted">{{.Hint}}</small></div>{{end}}</div>
+<div class="leitgrid">
+  <div class="card"><h2>Eingang &amp; Abschluss je Woche</h2>
+    <div class="weeks">{{range .Weeks}}<div class="wk" title="{{.Label}}: {{.New}} neu, {{.Closed}} abgeschlossen"><div class="wbars"><i class="n" style="height: {{.NewP}}%"></i><i class="c" style="height: {{.ClosedP}}%"></i></div><small>{{.Label}}</small></div>{{end}}</div>
+    <div class="legend small"><span class="lgd n"></span> neu <span class="lgd c"></span> abgeschlossen</div></div>
+  <div class="card"><h2>Engpässe – offene Schritte je Stelle</h2>
+    {{range .Bottle}}<div class="hbar tone-{{.Tone}}"><div class="hl"><b>{{.Label}}</b><small>{{.Text}} · {{.Sub}}</small></div><div class="ht"><i style="width: {{.Pct}}%"></i></div></div>
+    {{else}}<p class="muted">Keine offenen Schritte.</p>{{end}}</div>
+  <div class="card"><h2>Vorgänge je Ablauf (90 Tage)</h2>
+    {{range .ByWf}}<div class="hbar"><div class="hl"><b>{{.Label}}</b><small>{{.Text}}{{if .Sub}} · {{.Sub}}{{end}}</small></div><div class="ht"><i style="width: {{.Pct}}%"></i></div></div>
+    {{else}}<p class="muted">Noch keine Daten.</p>{{end}}</div>
+  <div class="card"><h2>Ø Bearbeitungszeit je Stelle</h2>
+    {{range .Speed}}<div class="hbar"><div class="hl"><b>{{.Label}}</b><small>{{.Text}} · {{.Sub}}</small></div><div class="ht"><i style="width: {{.Pct}}%"></i></div></div>
+    {{else}}<p class="muted">Noch keine erledigten Schritte.</p>{{end}}</div>
+  <div class="card"><h2>Älteste offene Vorgänge</h2>
+    <ul class="mini-req">{{range $i, $o := .Oldest}}<li><a href="/v/{{$o.ID}}"><span class="rtop"><span class="mono small">{{$o.Number}}</span><span class="pill s-warn">seit {{index $.Data.Leit.OldestAge $i}}</span></span><b>{{$o.Title}}</b><small class="muted">{{$o.WfName}}</small></a></li>
+    {{else}}<li class="muted">Keine offenen Vorgänge.</li>{{end}}</ul></div>
+</div>
+{{end}}{{end}}
+{{end}}{{end}}
+
+{{define "tasklist"}}
+{{if .}}
+<ul class="tasklist">{{range .}}
+  <li><a href="/v/{{.RequestID}}?s={{.ID}}" class="task k-{{.Kind}}">
+    <span class="kindchip k-{{.Kind}}">{{kindIcon .Kind}}</span>
+    <span class="tmain"><b>{{.Title}}{{if .ItemLabel}} · {{.ItemLabel}}{{end}}</b><small><span class="mono">{{.ReqNumber}}</span> · {{.ReqTitle}}</small></span>
+    <span class="tmeta">{{if eq .State "rueckfrage"}}<span class="pill s-warn">{{t "state.rueckfrage"}}</span>{{else if .DueAt.Valid}}<span class="{{if .Overdue}}bad{{else}}muted{{end}}">{{if .Overdue}}überfällig {{end}}{{rel .DueAt.Time}}</span>{{end}}<small class="muted">{{.Assignee.Label}}</small></span>
+  </a></li>{{end}}
+</ul>
+{{else}}<div class="empty"><div class="big-ico">✓</div>{{t "home.tasks_empty"}}</div>{{end}}
+{{end}}

@@ -1,0 +1,7 @@
+{{define "content"}}
+<div class="card empty-state">
+  <div class="big-ico">⚠</div>
+  <h1>{{if eq (printf "%v" .Data) "404"}}Nicht gefunden{{else if eq (printf "%v" .Data) "403"}}Kein Zugriff{{else}}Das hat nicht geklappt{{end}}</h1>
+  <p><a class="btn" href="/">Zur Übersicht</a></p>
+</div>
+{{end}}

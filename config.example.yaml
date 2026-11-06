@@ -1,0 +1,54 @@
+# Antragswerk – Konfiguration
+# Geheimnisse alternativ per Umgebungsvariable:
+#   ANTRAGSWERK_SECRET, ANTRAGSWERK_LDAP_BIND_PASSWORD, ANTRAGSWERK_SMTP_PASSWORD, ANTRAGSWERK_BASE_URL
+listen: ":8080"
+base_url: "https://antraege.stadt.local"   # für Links in Mails
+db_path: "antragswerk.db"                  # relativ zu dieser Datei
+secret: ""                                 # wird beim ersten Start erzeugt
+org: "Stadtverwaltung Musterstadt"
+cookie_secure: true                        # sobald per HTTPS erreichbar
+trust_proxy: false                         # X-Forwarded-For auswerten (nur hinter eigenem Reverse-Proxy)
+session_hours: 10
+
+# Demo-Modus: eingebautes Verzeichnis mit Beispielpersonen (Kennwort "demo"), Stellen mit Demo-Mitgliedern.
+# Kann parallel zu LDAP aktiv sein (Demo-Konten haben Vorrang) – im Betrieb ausschalten.
+demo: false
+
+# Mail-Links: Zuständige können Freigaben/Aufgaben ohne Anmeldung direkt aus der Mail erledigen.
+# Der Link gilt nur für genau diesen Schritt und verfällt nach Bearbeitung bzw. token_days.
+# false = Link führt zur Anmeldung und dann zum Schritt.
+token_links: true
+token_days: 30
+
+# Wer darf sich anmelden? Ohne Gruppen unter roles.nutzer + allow_all_users: true = alle aktiven AD-Konten.
+allow_all_users: true
+roles:
+  admin: ["GG-Antragswerk-Admins"]          # Designer, Stammdaten, Protokoll, Vertretung in allen Schritten
+  bearbeiter: ["GG-IT"]                     # sieht alle Vorgänge und den Postausgang
+  nutzer: []                                # optional einschränken
+
+ldap:
+  url: "ldaps://dc01.stadt.local:636"
+  # ca_file: "root-ca.pem"
+  insecure_skip_verify: false
+  start_tls: false
+  timeout_seconds: 10
+  bind_dn: "CN=svc-antragswerk,OU=Service,DC=stadt,DC=local"
+  bind_password: ""
+  base_dn: "DC=stadt,DC=local"
+  nested_groups: true
+  # login_filter: "(&(objectCategory=person)(objectClass=user)(|(sAMAccountName={u})(userPrincipalName={u})))"
+  # search_filter: "(&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(|(displayName=*{q}*)(sAMAccountName={q}*)(mail={q}*)))"
+
+# Ohne host werden Mails nur im Postausgang protokolliert.
+smtp:
+  host: "mail.stadt.local"
+  port: 587
+  security: "starttls"     # starttls | tls | none
+  username: ""
+  password: ""
+  from: "Antragswerk <antragswerk@stadt.local>"
+
+# tls:                     # optional direkt TLS terminieren (sonst Caddy/nginx davor)
+#   cert_file: ""
+#   key_file: ""

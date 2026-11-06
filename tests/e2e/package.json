@@ -1,0 +1,8 @@
+{
+  "name": "antragswerk-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Rauchtest der Oberfläche (Playwright) – siehe smoke.mjs",
+  "scripts": { "smoke": "node smoke.mjs" },
+  "devDependencies": { "playwright": "1.63.0" }
+}

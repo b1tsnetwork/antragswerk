@@ -1,0 +1,105 @@
+{{define "content"}}{{with .Data}}{{$d := .}}
+<div class="vhead" style="--c: {{safeColor .Color}}">
+  <a class="back" href="/vorgaenge">← Vorgänge</a>
+  <div class="vtitle">
+    <span class="qico" style="--c: {{safeColor .Color}}">{{.Def.Icon}}</span>
+    <div class="vt">
+      <div class="vtop"><span class="mono numtag">{{.Req.Number}}</span>{{template "statuspill" .Req.Status}}<span class="muted small">{{.Req.WfName}}</span></div>
+      <h1>{{.Req.Title}}</h1>
+      <div class="muted small">Gestellt von <b>{{.Req.RequesterName}}</b> am {{dt .Req.CreatedAt}}{{if .Req.ClosedAt.Valid}} · beendet {{dt .Req.ClosedAt}}{{end}}</div>
+    </div>
+    <div class="vprog">
+      <div class="ring" style="--p: {{pct .Done .Total}}"><span>{{pct .Done .Total}}%</span></div>
+      <small class="muted">{{.Done}} von {{.Total}} Schritten{{if .Skipped}}<br>{{.Skipped}} entfallen{{end}}</small>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="/v/{{.Req.ID}}/druck" target="_blank">{{t "detail.print"}}</a>
+      <details class="dropdown"><summary class="btn ghost">{{t "detail.note"}}</summary>
+        <form method="post" action="/v/{{.Req.ID}}/notiz" class="card dropform"><input type="hidden" name="csrf" value="{{$.CSRF}}">
+          <label>Notiz zum Vorgang<textarea name="text" rows="4" required placeholder="wird im Verlauf dokumentiert"></textarea></label><button class="btn primary">Speichern</button></form></details>
+      {{if .CanWithdraw}}<details class="dropdown"><summary class="btn ghost">{{t "detail.withdraw"}}</summary>
+        <form method="post" action="/v/{{.Req.ID}}/zurueckziehen" class="card dropform"><input type="hidden" name="csrf" value="{{$.CSRF}}">
+          <label>Grund<input name="reason" required></label><button class="btn danger">Vorgang zurückziehen</button></form></details>{{end}}
+    </div>
+  </div>
+</div>
+
+{{if .CanEdit}}
+<div class="callout warn big">
+  <div><b>{{t "detail.question"}}</b><div class="pre">{{.Question}}</div></div>
+  <a class="btn primary" href="/v/{{.Req.ID}}/bearbeiten">{{t "detail.question_btn"}}</a>
+</div>
+{{end}}
+
+<div class="card flowcard">
+  <div class="cardhead"><h2>{{t "detail.flow"}}</h2>
+    <div class="legend"><span class="lg s-ok">{{t "state.erledigt"}}</span><span class="lg s-open">{{t "state.offen"}}</span><span class="lg s-warn">{{t "state.geplant"}}{{if .HasGLPI}} / {{t "state.extern"}}{{end}}</span><span class="lg s-bad">{{t "state.abgelehnt"}}</span><span class="lg s-planned">{{t "state.ausstehend"}}</span>
+      {{if .Skipped}}<label class="tgl"><input type="checkbox" data-toggle-skipped> entfallene ({{.Skipped}}) zeigen</label>{{end}}</div></div>
+  <div class="flowmap" id="flowmap" data-edges='{{json .Edges}}' data-sel="{{.Sel}}">
+    <svg class="edges" aria-hidden="true"></svg>
+    {{range $i, $col := .Levels}}{{if $col}}
+    <div class="fcol">
+      {{range $col}}
+      <button type="button" class="fcard s-{{if .Planned}}planned{{else}}{{stateClass .State}}{{end}} k-{{.Kind}}{{if eq .State "uebersprungen"}} skipped{{end}}{{if .Mine}} mine{{end}}{{if .Overdue}} overdue{{end}}"
+        data-step="{{.StepID}}" {{if .ID}}data-card="{{.ID}}"{{end}} title="{{.Title}}{{if .Item}} · {{.Item}}{{end}}">
+        <span class="fk">{{kindIcon .Kind}}</span>
+        <span class="ft"><b>{{.Title}}</b>{{if .Item}}<em>{{.Item}}</em>{{end}}<small>{{if .Planned}}ausstehend · {{end}}{{.Assignee}}</small></span>
+        <span class="fs">{{if .Planned}}○{{else if eq (stateClass .State) "ok"}}✓{{else if eq .State "uebersprungen"}}–{{else if eq (stateClass .State) "bad"}}✕{{else if eq .State "geplant"}}⏱{{else if eq .State "extern"}}🎫{{else if eq .State "rueckfrage"}}?{{else}}●{{end}}</span>
+        {{if .Mine}}<span class="minebadge">{{t "detail.mine"}}</span>{{end}}
+        {{if .ScriptsN}}<span class="scbadge" title="{{.ScriptsN}} Skripte">⌨ {{.ScriptsN}}</span>{{end}}
+      </button>
+      {{end}}
+    </div>
+    {{end}}{{end}}
+  </div>
+</div>
+
+<div class="detailgrid">
+  <div class="stepcol">
+    <div class="card steppanel-empty" id="step-empty" {{if .Sel}}hidden{{end}}>
+      <h2>{{t "detail.pick"}}</h2>
+      <p class="muted">{{t "detail.pick_text"}}</p>
+      <ul class="openlist">{{range .Cards}}{{if and .ID (or (eq .State "offen") (eq .State "rueckfrage") (eq .State "geplant") (eq .State "extern"))}}
+        <li><a href="?s={{.ID}}" data-open-card="{{.ID}}"><span class="kindchip k-{{.Kind}}">{{kindIcon .Kind}}</span> {{.Title}}{{if .Item}} · {{.Item}}{{end}} <small class="muted">{{.Assignee}}</small>{{if .Mine}} <span class="minebadge inline">{{t "detail.mine"}}</span>{{end}}</a></li>{{end}}{{end}}</ul>
+    </div>
+    {{range .Cards}}{{if .ID}}
+    <div class="card panelwrap" data-panel="{{.ID}}" {{if ne .ID $d.Sel}}hidden{{end}}>
+      {{template "steppanel" (dict "Card" . "CSRF" $.CSRF "Action" (printf "/v/%d/s/%d" $d.Req.ID .ID) "Download" (printf "/v/%d/s/%d/skript" $d.Req.ID .ID) "Reassign" (printf "/v/%d/s/%d/weiterleiten" $d.Req.ID .ID))}}
+    </div>
+    {{end}}{{end}}
+    {{range .Cards}}{{if .Planned}}
+    <div class="card panelwrap" data-panel-step="{{.StepID}}" hidden>
+      <section class="steppanel">
+        <header class="sp-head"><span class="kindchip k-{{.Kind}}">{{kindIcon .Kind}} {{kindLabel .Kind}}</span><span class="pill s-muted">{{t "state.ausstehend"}}</span>
+          <h2>{{.Title}}{{if .Item}}<span class="item"> · {{.Item}}</span>{{end}}</h2><div class="sp-meta"><span>👥 voraussichtlich {{.Assignee}}</span></div></header>
+        {{if .Why}}<div class="why"><b>{{t "step.why"}}</b> {{.Why}}</div>{{end}}
+        <p class="muted">{{t "detail.planned"}}</p>
+      </section>
+    </div>
+    {{end}}{{end}}
+  </div>
+
+  <div class="infocol">
+    <div class="card tabs" data-tabs>
+      <div class="tabbar">
+        <button type="button" class="on" data-tab="antrag">{{t "detail.tab_data"}}</button>
+        <button type="button" data-tab="verlauf">{{t "detail.tab_log"}} <small>{{len .Journal}}</small></button>
+        <button type="button" data-tab="mails">{{t "detail.tab_mail"}} <small>{{len .Mails}}</small></button>
+        {{if .Computed}}<button type="button" data-tab="werte">{{t "detail.tab_values"}}</button>{{end}}
+      </div>
+      <div data-pane="antrag">{{template "sections" .Sections}}</div>
+      <div data-pane="verlauf" hidden>
+        <ol class="journal">{{range .Journal}}
+          <li class="j-{{.Kind}}"><div class="jh"><b>{{.Msg}}</b></div><div class="jm muted small">{{dt .At}} · {{.ActorName}}</div>{{if .Detail}}<details><summary class="small">Details</summary><div class="pre small">{{.Detail}}</div></details>{{end}}</li>
+        {{end}}</ol>
+      </div>
+      <div data-pane="mails" hidden>
+        {{range .Mails}}<details class="mailitem"><summary><span class="pill {{if eq .Status "gesendet"}}s-ok{{else if eq .Status "fehler"}}s-bad{{else}}s-muted{{end}}">{{.Status}}</span> <b>{{.Subject}}</b><small class="muted">an {{.To}} · {{dt .At}}</small></summary>
+          <div class="mailbody pre">{{.Body}}</div>{{if .Error}}<div class="hint err">{{.Error}}</div>{{end}}</details>
+        {{else}}<p class="muted">Noch keine Mails.</p>{{end}}
+      </div>
+      {{if .Computed}}<div data-pane="werte" hidden><p class="small muted">Aus den Antragsdaten berechnet und in Skripten als <code>{{"{{.c.…}}"}}</code> verfügbar.</p><dl class="kv">{{range .Computed}}<dt>{{.K}}</dt><dd class="mono">{{.V}}</dd>{{end}}</dl></div>{{end}}
+    </div>
+  </div>
+</div>
+{{end}}{{end}}

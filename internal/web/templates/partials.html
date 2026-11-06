@@ -1,0 +1,156 @@
+{{define "statuspill"}}<span class="pill st-{{.}}">{{statusLabel .}}</span>{{end}}
+
+{{define "statepill"}}<span class="pill s-{{stateClass .}}">{{stateLabel .}}</span>{{end}}
+
+{{define "person"}}<span class="person"><span class="avatar sm">{{initials (str .name)}}</span><span><b>{{.name}}</b><small>{{if .title}}{{.title}} · {{end}}{{.department}}{{if .mail}} · {{.mail}}{{end}}</small></span></span>{{end}}
+
+{{define "sections"}}
+{{range .}}
+<div class="dsec">
+  <h3><span class="ico">{{.Icon}}</span>{{.Title}}</h3>
+  <dl class="kv">
+  {{range .Rows}}
+    {{if .Multi}}
+      <dt>{{.Label}}</dt>
+      <dd class="full"><div class="tablewrap mini"><table class="grid"><thead><tr><th>#</th>{{range .Head}}<th>{{.}}</th>{{end}}</tr></thead>
+      <tbody>{{range $i, $r := .Rows}}<tr><td class="muted">{{add $i 1}}</td>{{range $r}}<td>{{.}}</td>{{end}}</tr>{{end}}</tbody></table></div></dd>
+    {{else if .Person}}
+      <dt>{{.Label}}</dt><dd>{{template "person" .Person}}</dd>
+    {{else}}
+      <dt>{{.Label}}</dt><dd class="pre">{{.Value}}</dd>
+    {{end}}
+  {{end}}
+  </dl>
+</div>
+{{end}}
+{{end}}
+
+{{define "steppanel"}}{{$c := .Card}}
+<section class="steppanel k-{{$c.Kind}}" id="step-{{$c.ID}}" data-step-panel="{{$c.ID}}">
+  <header class="sp-head">
+    <span class="kindchip k-{{$c.Kind}}">{{kindIcon $c.Kind}} {{kindLabel $c.Kind}}</span>
+    {{template "statepill" $c.State}}
+    {{if $c.Overdue}}<span class="pill s-bad">überfällig</span>{{end}}
+    <h2>{{$c.Title}}{{if $c.Item}}<span class="item"> · {{$c.Item}}</span>{{end}}</h2>
+    <div class="sp-meta">
+      <span>👥 {{$c.Assignee}}</span>
+      {{if $c.Due}}<span class="{{if $c.Overdue}}bad{{end}}">⏱ Frist {{$c.Due}} ({{$c.DueRel}})</span>{{end}}
+      {{with $c.Inst}}{{if .DoneAt.Valid}}<span>✓ {{dt .DoneAt}}{{if .DoneByName}} · {{.DoneByName}}{{end}}</span>{{end}}{{end}}
+    </div>
+  </header>
+
+  {{with $c.GLPI}}
+  <div class="glpibox{{if .Error}} has-err{{end}}">
+    <div class="gb-head">
+      <span class="gb-logo">GLPI</span>
+      {{if .Ticket}}<b>{{.Ticket}}</b>{{if .Status}} <span class="pill {{if $.Card.GLPI.Waiting}}s-warn{{else}}s-ok{{end}}">{{.Status}}</span>{{end}}
+        {{if .URL}}<a class="btn tiny ghost" href="{{.URL}}" target="_blank" rel="noopener">In GLPI öffnen ↗</a>{{end}}
+      {{else if eq .Phase "senden"}}<b>Wird übergeben …</b>{{if .Tries}} <span class="pill s-warn">Versuch {{.Tries}}/4{{if .Next}} · nächster um {{.Next}}{{end}}</span>{{end}}
+      {{else if eq .Phase "fehler"}}<b>Übergabe gescheitert</b> <span class="pill s-bad">manuell bearbeiten</span>
+      {{end}}
+    </div>
+    {{if .Waiting}}<div class="small muted">{{if .Ticket}}Wartet auf die Lösung in GLPI{{if .Checked}} · zuletzt abgefragt {{.Checked}}{{end}}.{{else}}Die Übergabe läuft im Hintergrund.{{end}}</div>{{end}}
+    {{if .Error}}<div class="hint err">{{.Error}}</div>{{end}}
+    {{if .Warn}}<details class="small"><summary>Hinweise bei der Übergabe</summary><div class="pre">{{.Warn}}</div></details>{{end}}
+    {{if .Feedback}}<div class="small gb-fb">Rückmeldelink im Ticket: <a href="{{.Feedback}}" target="_blank" rel="noopener">öffnen</a> – dort tragen Techniker/innen das Ergebnis ein.</div>{{end}}
+    {{if and .CanCtl $.CSRF}}
+    <form method="post" action="/v/{{$c.Inst.RequestID}}/glpi/{{$c.ID}}" class="gb-actions">
+      <input type="hidden" name="csrf" value="{{$.CSRF}}">
+      {{if and .Waiting .Ticket}}<button class="btn small" name="action" value="abfragen">⟳ Status abfragen</button>{{end}}
+      {{if or (eq .Phase "fehler") (and .Waiting (not .Ticket))}}<button class="btn small" name="action" value="erneut">↻ {{if .Ticket}}weiter beobachten{{else}}jetzt (erneut) übergeben{{end}}</button>{{end}}
+      {{if .Waiting}}<button class="btn small ghost" name="action" value="manuell" data-confirm="Schritt ohne GLPI manuell bearbeiten? Das Ticket bleibt in GLPI bestehen.">Manuell übernehmen</button>{{end}}
+    </form>
+    {{end}}
+  </div>
+  {{end}}
+  {{if and $c.Inst (eq $c.State "uebersprungen")}}
+    <p class="muted">Dieser Schritt entfällt: {{$c.Inst.Comment}}</p>
+  {{else}}
+  {{if $c.View.Why}}<div class="why"><b>{{t "step.why"}}</b> {{md $c.View.Why}}</div>{{end}}
+  {{if $c.View.Instructions}}<div class="instructions">{{md $c.View.Instructions}}</div>{{end}}
+
+  {{if and $c.Inst (eq $c.State "rueckfrage")}}<div class="callout warn"><b>Rückfrage an Antragsteller/in</b><div class="pre">{{$c.Inst.Comment}}</div><small>gestellt von {{$c.Inst.DoneByName}}</small></div>{{end}}
+  {{if and $c.Inst (ne $c.State "offen") (ne $c.State "rueckfrage") $c.Inst.Comment}}<div class="callout"><b>Kommentar</b><div class="pre">{{$c.Inst.Comment}}</div></div>{{end}}
+
+  <form method="post" action="{{.Action}}" class="sp-form" data-act-form>
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    {{if $c.View.Checklist}}
+    <div class="checklist">
+      <h4>{{t "step.checklist"}}</h4>
+      <input type="hidden" name="checks_n" value="{{len $c.View.Checklist}}">
+      {{range $i, $t := $c.View.Checklist}}
+      <label class="ck"><input type="checkbox" name="check_{{$i}}" value="1" {{if $c.Inst}}{{if checked $c.Inst.Checks $i}}checked{{end}}{{end}} {{if not $c.CanAct}}disabled{{end}}><span>{{md $t}}</span></label>
+      {{end}}
+    </div>
+    {{end}}
+
+    {{if $c.View.Scripts}}
+    <div class="scripts">
+      <h4>{{t "step.scripts"}} <small class="muted">{{t "step.scripts_hint"}}</small></h4>
+      {{range $i, $s := $c.View.Scripts}}
+      <div class="script">
+        <div class="script-head"><span class="lang">{{if eq $s.Lang "powershell"}}PS{{else}}{{$s.Lang}}{{end}}</span><b>{{$s.Title}}</b>
+          <span class="sp"></span>
+          {{if $.Download}}<a class="btn tiny ghost" href="{{$.Download}}/{{$i}}" title="Als Datei (UTF-8 mit BOM)">⇩ .{{if eq $s.Lang "powershell"}}ps1{{else}}txt{{end}}</a>{{end}}
+          <button type="button" class="btn tiny" data-copy="#code-{{$c.ID}}-{{$i}}">{{t "step.copy"}}</button></div>
+        {{if $s.Err}}<div class="hint err">{{$s.Err}}</div>{{end}}
+        <pre class="code" data-lang="{{$s.Lang}}"><code id="code-{{$c.ID}}-{{$i}}">{{$s.Code}}</code></pre>
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+
+    {{if $c.Outputs}}
+    <div class="outputs">
+      <h4>{{t "step.result"}}</h4>
+      <div class="outgrid">
+      {{range $c.Outputs}}
+        <label>{{.Label}}{{if .Required}} <span class="req">*</span>{{end}}
+          {{if $c.CanAct}}{{if eq .Type "textarea"}}<textarea name="out_{{.Key}}" rows="4" {{if .Required}}required{{end}} placeholder="{{.Placeholder}}">{{.Value}}</textarea>{{else}}<input name="out_{{.Key}}" value="{{.Value}}" {{if .Required}}required{{end}} {{if eq .Type "email"}}type="email"{{else if eq .Type "date"}}type="date"{{end}}>{{end}}{{else}}<div class="ro pre">{{if .Value}}{{.Value}}{{else}}—{{end}}</div>{{end}}
+          {{if .Help}}<small class="muted">{{.Help}}</small>{{end}}
+        </label>
+      {{end}}
+      </div>
+    </div>
+    {{end}}
+
+    {{if $c.CanAct}}
+    <div class="act">
+      <label class="cmt">{{t "step.comment"}} <small class="muted">{{if eq $c.Kind "freigabe"}}bei Ablehnung und Rückfrage erforderlich{{else}}optional, wird dokumentiert{{end}}</small>
+        <textarea name="comment" rows="2" placeholder="{{if eq $c.Kind "freigabe"}}Begründung …{{else}}z. B. Hinweise zur Umsetzung{{end}}"></textarea></label>
+      <div class="actbtns">
+      {{if eq $c.Kind "freigabe"}}
+        <button class="btn approve" name="action" value="freigeben">{{t "step.approve"}}</button>
+        <button class="btn reject" name="action" value="ablehnen" data-need-comment="Bitte begründen Sie die Ablehnung.">{{t "step.reject"}}</button>
+      {{else}}
+        <button class="btn approve" name="action" value="erledigt" data-check-list>{{t "step.done"}}</button>
+      {{end}}
+        <button class="btn ghost" name="action" value="rueckfrage" data-need-comment="Bitte formulieren Sie Ihre Rückfrage.">{{t "step.ask"}}</button>
+      </div>
+    </div>
+    {{end}}
+  </form>
+
+  {{if and $c.CanAct $.Reassign}}
+  <details class="reassign">
+    <summary>{{t "step.reassign"}}</summary>
+    <form method="post" action="{{$.Reassign}}" class="inline-form">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input name="target" placeholder="Stelle (z. B. it_benutzer), Mail oder Anmeldename" required>
+      <input name="reason" placeholder="Grund (optional)">
+      <button class="btn">Weiterleiten</button>
+    </form>
+  </details>
+  {{end}}
+  {{end}}
+</section>
+{{end}}
+
+{{define "reqrow"}}
+<li><a href="/v/{{.ID}}" class="reqrow">
+  <span class="rmain"><span class="rtop"><span class="mono small">{{.Number}}</span> {{template "statuspill" .Status}}{{if .Overdue}} <span class="pill s-bad">Frist überschritten</span>{{end}}</span>
+    <b>{{.Title}}</b>
+    <small class="muted">{{.WfName}} · {{.RequesterName}} · {{d .CreatedAt}}{{if .Current}} · <span class="cur">jetzt: {{.Current}}</span>{{end}}</small></span>
+  <span class="rprog"><span class="bar"><i style="width: {{pct .DoneN .Total}}%"></i></span><small>{{.DoneN}}/{{.Total}}</small></span>
+</a></li>
+{{end}}

@@ -1,0 +1,34 @@
+{{define "content"}}{{with .Data}}
+<div class="loginwrap">
+  <div class="loginhero">
+    <div class="brand big"><svg viewBox="0 0 32 32" width="40" height="40" aria-hidden="true"><rect width="32" height="32" rx="8" fill="currentColor"/><path d="M9 8h9l5 5v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" fill="#fff"/><path d="M18 8v5h5" fill="#cfe0fb"/><path d="m11.5 18.5 2.5 2.5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>{{$.App}}</span></div>
+    <h1>{{t "app.tagline"}}</h1>
+    <ul class="usp">
+      {{with t "login.usp1"}}<li>{{md .}}</li>{{end}}
+      {{with t "login.usp2"}}<li>{{md .}}</li>{{end}}
+      {{with t "login.usp3"}}<li>{{md .}}</li>{{end}}
+      {{with t "login.usp4"}}<li>{{md .}}</li>{{end}}
+    </ul>
+  </div>
+  <div class="card logincard">
+    <h2>{{t "login.title"}}</h2>
+    <form method="post" action="/login">
+      <input type="hidden" name="next" value="{{.Next}}">
+      <label>{{t "login.user"}}<input name="username" value="{{.User}}" autocomplete="username" autofocus required></label>
+      <label>{{t "login.pass"}}<input type="password" name="password" autocomplete="current-password" required></label>
+      <button class="btn primary block">{{t "login.button"}}</button>
+    </form>
+    {{if .Demo}}
+    <div class="demologin">
+      <h3>Demo-Zugänge <small class="muted">Kennwort jeweils <code>demo</code></small></h3>
+      {{range .Demo}}
+      <form method="post" action="/login" class="demouser">
+        <input type="hidden" name="username" value="{{.Sam}}"><input type="hidden" name="password" value="demo"><input type="hidden" name="next" value="{{$.Data.Next}}">
+        <button><span class="avatar sm">{{initials .Name}}</span><span><b>{{.Name}}</b><small>{{.Hint}}</small></span><span class="tag">{{roleLabel .Role}}</span></button>
+      </form>
+      {{end}}
+    </div>
+    {{else}}<p class="small muted">{{t "login.hint"}}{{if not .LDAP}} (LDAP ist noch nicht konfiguriert){{end}}</p>{{end}}
+  </div>
+</div>
+{{end}}{{end}}

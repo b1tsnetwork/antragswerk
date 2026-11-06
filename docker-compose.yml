@@ -1,0 +1,13 @@
+services:
+  antragswerk:
+    build: .
+    image: antragswerk:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      TZ: Europe/Berlin
+      # ANTRAGSWERK_LDAP_BIND_PASSWORD: ""
+      # ANTRAGSWERK_SMTP_PASSWORD: ""

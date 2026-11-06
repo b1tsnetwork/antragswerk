@@ -1,0 +1,17 @@
+{{define "content"}}{{with .Data}}
+<div class="pagehead"><div><h1>{{if .All}}Alle offenen Schritte{{else}}{{t "nav.inbox"}}{{end}}</h1>
+  <p class="muted">{{if .All}}Alle offenen Freigaben und Aufgaben aller Stellen.{{else}}Direkt zugewiesen oder über Ihre Stellen{{if .Stellen}} ({{join .Stellen ", "}}){{end}}.{{end}}</p></div>
+  {{if has $.Session "bearbeiter"}}<div class="seg"><a class="{{if not .All}}on{{end}}" href="/aufgaben">Meine</a><a class="{{if .All}}on{{end}}" href="/aufgaben?alle=1">Alle Stellen</a></div>{{end}}
+</div>
+<div class="card flush">
+{{if .Items}}
+<ul class="tasklist big">{{range .Items}}
+  <li><a href="/v/{{.RequestID}}?s={{.ID}}" class="task k-{{.Kind}}">
+    <span class="kindchip k-{{.Kind}}">{{kindIcon .Kind}} {{kindLabel .Kind}}</span>
+    <span class="tmain"><b>{{.Title}}{{if .ItemLabel}} · {{.ItemLabel}}{{end}}</b><small><span class="mono">{{.ReqNumber}}</span> · {{.ReqTitle}} · {{.ReqWf}}</small></span>
+    <span class="tmeta">{{if eq .State "rueckfrage"}}<span class="pill s-warn">wartet auf Antwort</span>{{else if .DueAt.Valid}}<span class="{{if .Overdue}}bad{{else}}muted{{end}}">{{if .Overdue}}⚠ überfällig {{end}}{{rel .DueAt.Time}}</span>{{end}}<small class="muted">{{.Assignee.Label}} · seit {{rel .CreatedAt}}</small></span>
+  </a></li>{{end}}
+</ul>
+{{else}}<div class="empty"><div class="big-ico">✓</div>Keine offenen Aufgaben.</div>{{end}}
+</div>
+{{end}}{{end}}

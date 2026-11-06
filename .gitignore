@@ -1,0 +1,7 @@
+antragswerk
+*.db
+*.db-*
+config.yaml
+data/
+node_modules/
+dist/

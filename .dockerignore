@@ -1,0 +1,5 @@
+.git
+data
+*.db*
+config.yaml
+tests/e2e/node_modules

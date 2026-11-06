@@ -1,0 +1,35 @@
+{{define "content"}}{{with .Data}}
+<div class="tokenpage">
+  <div class="brand big"><svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="currentColor"/><path d="M9 8h9l5 5v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" fill="#fff"/><path d="m11.5 18.5 2.5 2.5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>{{$.App}}</span></div>
+  {{if .Done}}
+  <div class="card empty-state"><div class="big-ico">✓</div><h1>{{.Done}}</h1><p class="muted">Sie können dieses Fenster schließen.</p></div>
+  {{else}}
+  <div class="card">
+    <div class="vtop"><span class="mono numtag">{{.Req.Number}}</span>{{template "statuspill" .Req.Status}}<span class="gb-logo">GLPI</span>{{if .Ticket}}<b>{{.Ticket}}</b>{{end}}</div>
+    <h1>Rückmeldung: {{.Step.Title}}{{if .Inst.ItemLabel}} · {{.Inst.ItemLabel}}{{end}}</h1>
+    <p class="muted small">{{.Req.Title}} · gestellt von {{.Req.RequesterName}} am {{dt .Req.CreatedAt}}.
+      Melden Sie hier, dass die Umsetzung erledigt ist – der Antrag läuft dann automatisch weiter. Alternativ genügt es, das {{if .Ticket}}{{.Ticket}}{{else}}Ticket{{end}} in GLPI zu lösen{{if .Fields}} und die Angaben als „Bezeichnung: Wert“ in die Lösung zu schreiben{{end}}.</p>
+  </div>
+  <form method="post" class="card fbform">
+    {{if .Fields}}<h2>Angaben</h2>
+    <div class="outgrid">
+    {{range .Fields}}
+      <label>{{.Label}}{{if .Required}} <span class="req">*</span>{{end}}
+        {{if eq .Type "textarea"}}<textarea name="out_{{.Key}}" rows="3" placeholder="{{.Placeholder}}"></textarea>{{else}}<input name="out_{{.Key}}" {{if eq .Type "date"}}type="date"{{else if eq .Type "email"}}type="email"{{end}} placeholder="{{.Placeholder}}">{{end}}
+        {{if .Help}}<small class="muted">{{.Help}}</small>{{end}}
+      </label>
+    {{end}}
+    </div>{{end}}
+    <div class="grid2">
+      <label>Ihr Name <input name="von" autocomplete="name" placeholder="für die Dokumentation"></label>
+      <label>Kommentar <small class="muted">bei „Problem melden“ erforderlich</small><textarea name="kommentar" rows="2"></textarea></label>
+    </div>
+    <div class="actbtns">
+      <button class="btn approve" name="status" value="erledigt">✓ Erledigt melden</button>
+      <button class="btn reject" name="status" value="problem" data-need-comment="Bitte beschreiben Sie das Problem.">Problem melden</button>
+    </div>
+  </form>
+  <div class="card"><h2>Angaben im Antrag</h2>{{template "sections" .Summary}}</div>
+  {{end}}
+</div>
+{{end}}{{end}}

@@ -1,0 +1,10 @@
+{{define "content"}}{{with .Data}}
+<a class="back" href="/neu">← Alle Anträge</a>
+<div class="card empty-state" style="max-width:720px;margin:24px auto">
+  <div class="big-ico">⏸</div>
+  <h1>{{tf "disabled.title" .Active.Def.Name}}</h1>
+  <p class="muted">{{t "disabled.text"}}</p>
+  {{if .DisabledNote}}<div class="callout warn" style="text-align:left"><b>Hinweis</b><div class="pre">{{.DisabledNote}}</div></div>{{end}}
+  <p><a class="btn" href="/neu">Andere Anträge</a>{{if has $.Session "admin"}} <a class="btn primary" href="/designer/{{.Key}}">Im Designer öffnen</a>{{end}}</p>
+</div>
+{{end}}{{end}}

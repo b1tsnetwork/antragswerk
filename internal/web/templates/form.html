@@ -1,0 +1,12 @@
+{{define "content"}}{{with .Data}}
+<div class="pagehead">
+  <div>
+    <a class="back" href="{{if eq .Mode "edit"}}/v/{{.ReqID}}{{else}}/neu{{end}}">← {{if eq .Mode "edit"}}Zurück zum Vorgang {{.Number}}{{else}}Alle Anträge{{end}}</a>
+    <h1><span class="qico sm" style="--c: {{safeColor .Def.Color}}">{{.Def.Icon}}</span>{{.Def.Name}}</h1>
+    {{if .Def.Description}}<p class="muted lead">{{.Def.Description}}</p>{{end}}
+  </div>
+</div>
+<div id="aw-form" class="formapp"><p class="muted">Formular wird geladen …</p></div>
+<script type="application/json" id="form-data">{{json .}}</script>
+<script src="/static/form.js?v={{$.AssetV}}" defer></script>
+{{end}}{{end}}

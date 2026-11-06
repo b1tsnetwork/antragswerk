@@ -1,0 +1,6 @@
+{{define "content"}}
+<div class="pagehead"><div><h1>Protokoll</h1><p class="muted">Anmeldungen und Aktionen (letzte 500).</p></div></div>
+<div class="card flush"><table class="grid"><thead><tr><th>Zeit</th><th>Wer</th><th>IP</th><th>Aktion</th><th>Details</th></tr></thead><tbody>
+{{range .Data}}<tr><td class="nowrap small">{{dt .At}}</td><td>{{.Actor}}</td><td class="mono small">{{.IP}}</td><td><span class="tag">{{.Action}}</span></td><td class="small">{{.Detail}}</td></tr>{{end}}
+</tbody></table></div>
+{{end}}

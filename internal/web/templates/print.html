@@ -1,0 +1,20 @@
+{{define "content"}}{{with .Data}}
+<div class="printdoc">
+  <div class="noprint" style="margin-bottom:16px"><button class="btn primary" data-print>Drucken / als PDF speichern</button> <a class="btn ghost" href="/v/{{.Req.ID}}">Zurück</a></div>
+  <h1>Nachweis {{.Req.Number}}</h1>
+  <p><b>{{.Req.Title}}</b><br>{{.Req.WfName}} · Status: {{statusLabel .Req.Status}}<br>Gestellt von {{.Req.RequesterName}} am {{dt .Req.CreatedAt}}{{if .Req.ClosedAt.Valid}} · beendet {{dt .Req.ClosedAt}}{{end}}</p>
+  <h2>Angaben</h2>
+  {{template "sections" .Sections}}
+  <h2>Schritte</h2>
+  <table class="grid printtable"><thead><tr><th>Schritt</th><th>Zuständig</th><th>Status</th><th>Erledigt</th><th>Kommentar / Ergebnis</th></tr></thead><tbody>
+  {{range .Cards}}{{if .Inst}}<tr><td>{{kindLabel .Kind}}: {{.Title}}{{if .Item}} · {{.Item}}{{end}}</td><td>{{.Assignee}}</td><td>{{stateLabel .State}}</td>
+    <td>{{if .Inst.DoneAt.Valid}}{{dt .Inst.DoneAt}}<br>{{.Inst.DoneByName}}{{end}}</td><td class="pre">{{.Inst.Comment}}{{range $k, $v := .Inst.Outputs}}
+{{$k}}: {{$v}}{{end}}</td></tr>{{end}}{{end}}
+  </tbody></table>
+  <h2>Verlauf</h2>
+  <table class="grid printtable"><thead><tr><th>Zeit</th><th>Wer</th><th>Ereignis</th></tr></thead><tbody>
+  {{range .Journal}}<tr><td class="nowrap">{{dt .At}}</td><td>{{.ActorName}}</td><td><b>{{.Msg}}</b>{{if .Detail}}<div class="pre small">{{.Detail}}</div>{{end}}</td></tr>{{end}}
+  </tbody></table>
+  <p class="small muted">Erstellt mit Antragswerk am {{dt .Req.UpdatedAt}}.</p>
+</div>
+{{end}}{{end}}

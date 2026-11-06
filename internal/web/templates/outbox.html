@@ -1,0 +1,9 @@
+{{define "content"}}{{with .Data}}
+<div class="pagehead"><div><h1>Postausgang</h1><p class="muted">{{if .SMTP}}Alle versendeten Benachrichtigungen.{{else}}SMTP ist nicht konfiguriert – Mails werden nur hier protokolliert. Links in den Mails funktionieren trotzdem.{{end}}</p></div></div>
+<div class="card flush"><table class="grid">
+<thead><tr><th>Zeit</th><th>Vorgang</th><th>An</th><th>Betreff</th><th>Status</th></tr></thead><tbody>
+{{range .Items}}<tr class="rowlink" data-href="/postausgang/{{.ID}}"><td class="nowrap small">{{dt .At}}</td><td class="mono small">{{.ReqNumber}}</td><td class="small">{{.To}}</td><td><a href="/postausgang/{{.ID}}">{{.Subject}}</a></td>
+<td><span class="pill {{if eq .Status "gesendet"}}s-ok{{else if eq .Status "fehler"}}s-bad{{else}}s-muted{{end}}">{{.Status}}</span></td></tr>
+{{else}}<tr><td colspan="5" class="empty">Noch keine Mails.</td></tr>{{end}}
+</tbody></table></div>
+{{end}}{{end}}

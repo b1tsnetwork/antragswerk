@@ -1,0 +1,67 @@
+{{define "layout"}}<!doctype html>
+<html lang="de" data-mode="{{.Mode}}"{{if .UserTheme}} data-user-theme="1"{{end}}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · {{.App}}</title>
+<style id="aw-theme">{{.Theme}}</style>
+<script type="application/json" id="aw-presets">{{.Presets}}</script>
+<script src="/static/theme.js?v={{.AssetV}}"></script>
+<link rel="stylesheet" href="/static/style.css?v={{.AssetV}}">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<script src="/static/app.js?v={{.AssetV}}" defer></script>
+</head>
+<body class="nav-{{.Nav}}{{if .Wide}} wide{{end}}"{{if .Session}} data-live="1" data-csrf="{{.CSRF}}"{{end}}>
+{{if .Session}}
+<header class="topbar">
+  <a class="brand" href="/">
+    <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="8" fill="currentColor"/><path d="M9 8h9l5 5v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" fill="#fff"/><path d="M18 8v5h5" fill="#fff" opacity=".75"/><path d="m11.5 18.5 2.5 2.5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>{{.App}}</span>
+  </a>
+  <nav class="mainnav" id="mainnav">
+    <a href="/" {{if eq .Nav "home"}}class="active"{{end}}>{{t "nav.home"}}</a>
+    <a href="/neu" {{if eq .Nav "neu"}}class="active"{{end}}>{{t "nav.neu"}}</a>
+    <a href="/aufgaben" {{if eq .Nav "inbox"}}class="active"{{end}}>{{t "nav.inbox"}}{{if .Inbox}} <b class="count">{{.Inbox}}</b>{{end}}</a>
+    <a href="/vorgaenge" {{if eq .Nav "list"}}class="active"{{end}}>{{t "nav.list"}}</a>
+    {{if has .Session "admin"}}
+    <span class="navsep"></span>
+    <a href="/designer" {{if eq .Nav "designer"}}class="active"{{end}}>{{t "nav.designer"}}</a>
+    <a href="/stammdaten" {{if eq .Nav "stammdaten"}}class="active"{{end}}>{{t "nav.master"}}</a>
+    <a href="/einstellungen" {{if eq .Nav "settings"}}class="active"{{end}}>{{t "nav.settings"}}</a>
+    {{end}}
+    {{if has .Session "bearbeiter"}}<a href="/postausgang" {{if eq .Nav "outbox"}}class="active"{{end}}>{{t "nav.outbox"}}</a>{{end}}
+    {{if has .Session "admin"}}<a href="/protokoll" {{if eq .Nav "audit"}}class="active"{{end}}>{{t "nav.audit"}}</a>{{end}}
+  </nav>
+  <details class="dropdown navmore" hidden><summary>{{t "nav.more"}} ▾</summary><div class="navmore-menu"></div></details>
+  <button class="navtoggle" type="button" aria-label="Menü" data-toggle="#mainnav">☰</button>
+  <span class="livebadge" id="livebadge" title="Live-Aktualisierung"><i></i></span>
+  <details class="usermenu">
+    <summary><span class="avatar">{{initials .Session.Display}}</span><span class="uname">{{.Session.Display}}</span></summary>
+    <div class="menu">
+      <div class="menu-head"><b>{{.Session.Display}}</b><small>{{.Session.Username}}{{if .Session.Mail}} · {{.Session.Mail}}{{end}}</small>
+        <span class="tag">{{roleLabel .Session.Role}}</span>
+        {{if .Session.Stellen}}<div class="small muted">Stellen: {{join .Session.Stellen ", "}}</div>{{end}}</div>
+      {{if .UserTheme}}
+      <div class="menu-theme">
+        <div class="small muted">{{t "nav.appearance"}}</div>
+        <div class="seg block" data-mode-switch><button type="button" data-mode="auto">◐ System</button><button type="button" data-mode="light">☀ Hell</button><button type="button" data-mode="dark">☾ Dunkel</button></div>
+        <div class="swatches" data-accent-switch><button type="button" data-accent="" title="Vorgabe der Verwaltung" class="sw-default">↺</button></div>
+      </div>
+      {{end}}
+      <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="btn ghost block">{{t "nav.logout"}}</button></form>
+    </div>
+  </details>
+</header>
+{{if .Banner}}<div class="sitebanner tone-{{.Tone}}">{{md .Banner}}</div>{{end}}
+{{end}}
+{{if .Demo}}{{if .Session}}<div class="demobar">{{t "demo.bar"}}</div>{{end}}{{end}}
+<main>
+  {{if .Msg}}<div class="flash ok" role="status">{{.Msg}}</div>{{end}}
+  {{if .Err}}<div class="flash err" role="alert">{{.Err}}</div>{{end}}
+  {{template "content" .}}
+</main>
+<div id="toasts" aria-live="polite"></div>
+<footer>{{.App}} {{.Version}}{{if .Org}} · {{.Org}}{{end}}{{with t "footer.text"}} · {{.}}{{end}}</footer>
+<script type="application/json" id="aw-texts">{{.TextsJS}}</script>
+</body>
+</html>{{end}}

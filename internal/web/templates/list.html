@@ -1,0 +1,31 @@
+{{define "content"}}{{with .Data}}
+<div class="pagehead"><div><h1>{{t "nav.list"}}</h1><p class="muted">{{.Total}} Treffer</p></div>
+  <div class="actions"><a class="btn primary" href="/neu">{{t "home.btn_new"}}</a></div></div>
+<form class="filters" method="get">
+  <div class="seg">
+    {{if has $.Session "bearbeiter"}}<a class="{{if eq .Scope ""}}on{{end}}" href="?scope=&status={{.F.Status}}">Alle</a>{{end}}
+    <a class="{{if eq .Scope "beteiligt"}}on{{end}}" href="?scope=beteiligt&status={{.F.Status}}">Beteiligt</a>
+    <a class="{{if eq .Scope "meine"}}on{{end}}" href="?scope=meine&status={{.F.Status}}">Eigene</a>
+  </div>
+  <input type="hidden" name="scope" value="{{.Scope}}">
+  <input type="search" name="q" value="{{.F.Q}}" placeholder="Nummer, Name, Inhalt …">
+  <select name="status" data-autosubmit>
+    <option value="offen" {{if eq .F.Status "offen"}}selected{{end}}>Offen</option>
+    <option value="" {{if eq .F.Status ""}}selected{{end}}>Alle Status</option>
+    <option value="laufend" {{if eq .F.Status "laufend"}}selected{{end}}>In Bearbeitung</option>
+    <option value="rueckfrage" {{if eq .F.Status "rueckfrage"}}selected{{end}}>Rückfrage</option>
+    <option value="abgeschlossen" {{if eq .F.Status "abgeschlossen"}}selected{{end}}>Abgeschlossen</option>
+    <option value="abgelehnt" {{if eq .F.Status "abgelehnt"}}selected{{end}}>Abgelehnt</option>
+    <option value="zurueckgezogen" {{if eq .F.Status "zurueckgezogen"}}selected{{end}}>Zurückgezogen</option>
+  </select>
+  <select name="wf" data-autosubmit><option value="">Alle Abläufe</option>{{range .Workflows}}{{with .Current}}<option value="{{.Def.Key}}" {{if eq $.Data.F.WfKey .Def.Key}}selected{{end}}>{{.Def.Name}}</option>{{end}}{{end}}</select>
+  <button class="btn">Filtern</button>
+</form>
+<div class="card flush">
+{{if .Items}}<ul class="reqlist">{{range .Items}}{{template "reqrow" .}}{{end}}</ul>
+{{else}}<div class="empty"><div class="big-ico">∅</div>Keine Vorgänge für diese Auswahl.</div>{{end}}
+</div>
+{{if gt .Pages 1}}<div class="pager">{{if gt .Page 1}}<a class="btn" href="?scope={{.Scope}}&status={{.F.Status}}&q={{.F.Q}}&wf={{.F.WfKey}}&p={{add .Page -1}}">← zurück</a>{{end}}
+  <span>Seite {{.Page}} / {{.Pages}}</span>
+  {{if lt .Page .Pages}}<a class="btn" href="?scope={{.Scope}}&status={{.F.Status}}&q={{.F.Q}}&wf={{.F.WfKey}}&p={{add .Page 1}}">weiter →</a>{{end}}</div>{{end}}
+{{end}}{{end}}

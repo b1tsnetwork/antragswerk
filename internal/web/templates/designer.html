@@ -1,0 +1,6 @@
+{{define "content"}}
+<div id="designer" class="designer"><p class="muted">Designer wird geladen …</p></div>
+<script type="application/json" id="designer-data">{{json .Data}}</script>
+<script src="/static/form.js?v={{$.AssetV}}" defer></script>
+<script src="/static/designer.js?v={{$.AssetV}}" defer></script>
+{{end}}
