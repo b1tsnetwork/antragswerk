@@ -1,0 +1,109 @@
+key: postfach
+name: Funktionspostfach oder Verteiler anlegen
+description: Gemeinsames Postfach oder Verteilerliste einrichten – mit verantwortlicher Person, Mitgliedern und Rechten; danach automatisch im Katalog verfügbar machen.
+category: Berechtigungen
+icon: "📮"
+color: "#0e7490"
+prefix: PF
+title_tpl: "{{.typ_text}} {{.adresse}}@{{.var.mail_domain}}"
+form:
+  sections:
+    - id: grund
+      title: Postfach
+      icon: "📮"
+      fields:
+        - {key: typ, label: Art, type: radio, required: true, default: shared, options: [{value: shared, label: Funktionspostfach (gemeinsam bearbeitet)}, {value: verteiler, label: Verteilerliste (nur weiterleiten)}]}
+        - {key: adresse, label: Adresse (vor dem @), type: text, required: true, width: half, pattern: '^[a-z0-9][a-z0-9.-]{1,40}$', pattern_msg: "Kleinbuchstaben, Ziffern, Punkt und Bindestrich", placeholder: "z. B. wahlamt"}
+        - {key: anzeigename, label: Anzeigename, type: text, required: true, width: half, placeholder: "z. B. Stadt – Wahlamt"}
+        - {key: zweck, label: Zweck, type: textarea, required: true}
+        - {key: verantwortlich, label: Verantwortliche Person, type: user, required: true, width: half, help: "entscheidet künftig über Zugriffe"}
+        - {key: extern, label: Von extern erreichbar, type: checkbox, default: "true", width: half}
+    - id: mitglieder
+      title: Mitglieder
+      icon: "👥"
+      fields:
+        - key: mitglieder
+          label: Mitglieder
+          type: group
+          add_label: Person hinzufügen
+          item_label: Mitglied
+          min: 1
+          required: true
+          fields:
+            - {key: person, label: Person, type: user, required: true, width: half}
+            - key: recht
+              label: Recht
+              type: select
+              required: true
+              width: half
+              default: voll
+              options: [{value: voll, label: Vollzugriff}, {value: voll_senden, label: Vollzugriff + Senden als}, {value: lesen, label: Nur lesen}]
+              show: {mode: all, rules: [{field: typ, op: eq, values: [shared]}]}
+computed:
+  - {key: mail, label: Adresse, tpl: "{{lower .adresse}}@{{.var.mail_domain}}"}
+  - {key: gruppe, label: Berechtigungsgruppe, tpl: "MB-{{replace \".\" \"-\" .adresse}}-FA"}
+steps:
+  - id: fg_vorgesetzt
+    title: Freigabe verantwortliche Person
+    kind: freigabe
+    after: []
+    assign: {type: feld, field: verantwortlich}
+    why: Die verantwortliche Person bestätigt Zweck und Mitglieder und entscheidet künftig über Zugriffe.
+  - id: anlegen
+    title: Postfach / Verteiler anlegen
+    kind: aufgabe
+    after: [fg_vorgesetzt]
+    assign: {type: stelle, stelle: it_mail}
+    instructions: "{{.typ_text}} **{{.c.mail}}** „{{.anzeigename}}“, {{if .extern}}extern erreichbar{{else}}nur intern{{end}}."
+    checklist:
+      - Angelegt und im Adressbuch sichtbar
+      - Rechte über Berechtigungsgruppe gesetzt
+      - Testmail versendet
+    scripts:
+      - title: Anlegen
+        lang: powershell
+        code: |
+          {{- if eq .typ "shared"}}
+          New-ADGroup -Name {{ps .c.gruppe}} -GroupScope Universal -GroupCategory Security -Path {{ps .var.ou_gruppen_mail}} -Description {{ps (printf "Vollzugriff %s · %s" .c.mail .antrag.nummer)}}
+          New-RemoteMailbox -Shared -Name {{ps .anzeigename}} -Alias {{ps .adresse}} -PrimarySmtpAddress {{ps .c.mail}} -OnPremisesOrganizationalUnit {{ps .var.ou_gruppen_mail}}
+          # nach der Synchronisierung in Exchange Online:
+          Add-MailboxPermission {{ps .c.mail}} -User {{ps .c.gruppe}} -AccessRights FullAccess -AutoMapping $true
+          {{- range .mitglieder}}
+          Add-ADGroupMember {{ps $.c.gruppe}} -Members {{ps .person.sam}}   # {{.person.name}} – {{.recht_text}}
+          {{- if eq .recht "voll_senden"}}
+          Add-RecipientPermission {{ps $.c.mail}} -Trustee {{ps .person.mail}} -AccessRights SendAs -Confirm:$false
+          {{- end}}
+          {{- end}}
+          {{- else}}
+          New-DistributionGroup -Name {{ps .anzeigename}} -Alias {{ps .adresse}} -PrimarySmtpAddress {{ps .c.mail}} -OrganizationalUnit {{ps .var.ou_gruppen_mail}} -ManagedBy {{ps .verantwortlich.mail}}
+          {{- range .mitglieder}}
+          Add-DistributionGroupMember {{ps $.c.mail}} -Member {{ps .person.mail}}
+          {{- end}}
+          {{- end}}
+          Set-{{if eq .typ "shared"}}RemoteMailbox{{else}}DistributionGroup{{end}} {{ps .c.mail}} -RequireSenderAuthenticationEnabled {{if .extern}}$false{{else}}$true{{end}}
+  - id: katalog
+    title: In Katalog „Funktionspostfächer“ aufnehmen
+    kind: aufgabe
+    after: [anlegen]
+    when: {mode: all, rules: [{field: typ, op: eq, values: [shared]}]}
+    assign: {type: stelle, stelle: aw_admin}
+    instructions: "Unter Stammdaten → Kataloge → Funktions- & Gruppenpostfächer einen Eintrag anlegen, damit künftige Zugriffe per Antrag „Zugriff auf Verzeichnisse & Postfächer“ beantragt werden können."
+    checklist:
+      - "Schlüssel {{.adresse}}, Bezeichnung {{.adresse}}@"
+      - "Adresse {{.c.mail}}, Gruppe {{.c.gruppe}}, Verantwortlich {{.verantwortlich.mail}}"
+  - id: info
+    title: Info an Verantwortliche/n
+    kind: info
+    after: [anlegen, katalog]
+    assign: {type: feld, field: verantwortlich}
+    mail:
+      subject: "{{.c.mail}} ist eingerichtet"
+      body: |
+        Guten Tag {{.verantwortlich.name}},
+
+        {{.typ_text}} {{.c.mail}} („{{.anzeigename}}“) ist eingerichtet. Mitglieder:
+        {{- range .mitglieder}}
+          • {{.person.name}}{{if .recht_text}} – {{.recht_text}}{{end}}
+        {{- end}}
+
+        Weitere Zugriffe beantragen Sie über Antragswerk („Zugriff auf Verzeichnisse & Postfächer“).

@@ -1,0 +1,25 @@
+# Globale Variablen – in Skripten als {{.var.schluessel}} verfügbar.
+vars:
+  - {key: organisation, label: Organisation, value: "Stadtverwaltung Musterstadt"}
+  - {key: domain_netbios, label: Domäne (NetBIOS), value: "DEMO"}
+  - {key: upn_suffix, label: UPN-Suffix, value: "demo-stadt.de"}
+  - {key: mail_domain, label: Mail-Domäne, value: "demo-stadt.de"}
+  - {key: m365_routing, label: M365-Routing-Domäne, value: "demostadt.mail.onmicrosoft.com", hint: "für Enable-RemoteMailbox (Hybrid)"}
+  - {key: exchange_db, label: Exchange-Datenbank, value: "DB01", hint: "für Enable-Mailbox (lokal)"}
+  - {key: ou_benutzer, label: OU Benutzer (Standard), value: "OU=Benutzer,OU=Stadt,DC=demo-stadt,DC=local"}
+  - {key: ou_deaktiviert, label: OU deaktivierte Konten, value: "OU=Deaktiviert,OU=Stadt,DC=demo-stadt,DC=local"}
+  - {key: ou_extern, label: OU Externe, value: "OU=Extern,OU=Stadt,DC=demo-stadt,DC=local"}
+  - {key: home_root, label: Home-Freigabe, value: '\\fs01\home$'}
+  - {key: archiv_root, label: Archiv ausgeschiedener Benutzer, value: '\\fs01\archiv$\Benutzer'}
+  - {key: standard_gruppen, label: Standardgruppen für alle, value: "GG-Alle-Mitarbeitenden;GG-Intranet;GG-Drucken"}
+  - {key: vpn_gruppe, label: VPN-Gruppe, value: "GG-VPN-Benutzer"}
+  - {key: mdm_gruppe, label: MDM-Gruppe (Diensthandy), value: "GG-MDM-Smartphone"}
+  - {key: benutzername_schema, label: Benutzernamen-Schema, value: "{v1}.{n}", hint: "{v}=Vorname, {v1}/{v2}=erste Buchstaben, {n}=Nachname, {n1}; Umlaute werden umgeschrieben, max. 20 Zeichen"}
+  - {key: loeschfrist_tage, label: Löschfrist nach Austritt (Tage), value: "90"}
+  - {key: ou_admin_t0, label: OU Admin-Konten Tier 0, value: "OU=T0-Accounts,OU=Admin,DC=demo-stadt,DC=local"}
+  - {key: ou_admin_t1, label: OU Admin-Konten Tier 1, value: "OU=T1-Accounts,OU=Admin,DC=demo-stadt,DC=local"}
+  - {key: ou_admin_t2, label: OU Admin-Konten Tier 2, value: "OU=T2-Accounts,OU=Admin,DC=demo-stadt,DC=local"}
+  - {key: admin_praefix, label: Präfix Admin-Konten, value: "adm-", hint: "z. B. adm-t1-mmuster"}
+  - {key: ou_gruppen_mail, label: OU Mail-Gruppen, value: "OU=Mail,OU=Gruppen,DC=demo-stadt,DC=local"}
+  - {key: gast_ssid, label: Gast-WLAN (SSID), value: "Stadt-Gast"}
+  - {key: ou_pausiert, label: OU pausierte Konten, value: "OU=Pausiert,OU=Stadt,DC=demo-stadt,DC=local", hint: "Langzeitabwesenheit"}

@@ -1,0 +1,175 @@
+key: aenderung
+name: Änderung von Benutzerdaten
+description: Namensänderung, neue Funktion, Raum, Telefon oder Vorgesetzte/r – nur die betroffenen Stellen werden beteiligt.
+category: Benutzer & Konten
+icon: "✏️"
+color: "#0e7490"
+prefix: AEN
+title_tpl: "Änderung {{.person}}: {{.aenderungen_text}}"
+form:
+  sections:
+    - id: person
+      title: Was ändert sich?
+      icon: "👤"
+      fields:
+        - {key: person, label: Person, type: user, required: true, width: half}
+        - {key: ab, label: Gültig ab, type: date, required: true, width: half}
+        - {key: aenderungen, label: Änderungen, type: checkboxes, required: true, options: [{value: name, label: Name}, {value: funktion, label: Funktion / Titel}, {value: raum, label: Raum}, {value: telefon, label: Telefon}, {value: vorgesetzt, label: Vorgesetzte/r}, {value: sonstiges, label: Sonstiges}]}
+    - id: name
+      title: Namensänderung
+      icon: "🪪"
+      show: {mode: all, rules: [{field: aenderungen, op: contains, values: [name]}]}
+      fields:
+        - {key: vorname_neu, label: Vorname (neu), type: text, width: half, help: "leer = unverändert"}
+        - {key: nachname_neu, label: Nachname (neu), type: text, required: true, width: half}
+        - {key: grund, label: Anlass, type: select, width: half, options: [{value: heirat, label: Eheschließung}, {value: scheidung, label: Scheidung}, {value: sonstiges, label: Sonstiges}]}
+        - {key: alias, label: Alte Mailadresse als Alias behalten, type: checkbox, default: "true", width: half}
+        - {key: hinweis_name, type: info, label: "Der Anmeldename bleibt standardmäßig erhalten, damit Fachverfahren und Dateirechte nicht brechen. Nur Anzeigename, Mailadresse und UPN werden angepasst.", tone: info}
+    - id: funktion
+      title: Funktion
+      icon: "💼"
+      show: {mode: all, rules: [{field: aenderungen, op: contains, values: [funktion]}]}
+      fields:
+        - {key: funktion_neu, label: Neue Funktion, type: text, required: true, prefill: {from: person, attr: title}}
+    - id: raum
+      title: Raum
+      icon: "🚪"
+      show: {mode: all, rules: [{field: aenderungen, op: contains, values: [raum]}]}
+      fields:
+        - {key: raum_neu, label: Neuer Raum, type: catalog, catalog: raeume, required: true}
+    - id: telefon
+      title: Telefon
+      icon: "☎"
+      show: {mode: all, rules: [{field: aenderungen, op: contains, values: [telefon]}]}
+      fields:
+        - {key: telefon_neu, label: Neue Rufnummer / Wunsch, type: phone, width: half, prefill: {from: person, attr: phone}}
+        - {key: telefon_art, label: Art, type: radio, width: half, default: tausch, options: [{value: tausch, label: Nummer ändern}, {value: geraet, label: Neues Endgerät}, {value: softphone, label: Softphone}]}
+    - id: vorgesetzt
+      title: Vorgesetzte/r
+      icon: "🧭"
+      show: {mode: all, rules: [{field: aenderungen, op: contains, values: [vorgesetzt]}]}
+      fields:
+        - {key: vorgesetzter_neu, label: Neue/r Vorgesetzte/r, type: user, required: true}
+    - id: sonst
+      title: Sonstiges
+      icon: "💬"
+      show: {mode: all, rules: [{field: aenderungen, op: contains, values: [sonstiges]}]}
+      fields:
+        - {key: sonstiges, label: Beschreibung, type: textarea, required: true}
+computed:
+  - {key: sam, label: Benutzername, tpl: "{{.person.sam}}"}
+  - {key: vorname, label: Vorname, tpl: "{{default .person.given .vorname_neu}}"}
+  - {key: mail_neu, label: Neue Mailadresse, tpl: "{{lower (ascii .c.vorname)}}.{{lower (ascii .nachname_neu)}}@{{.var.mail_domain}}"}
+steps:
+  - id: fg_personal
+    title: Bestätigung Personalabteilung
+    kind: freigabe
+    after: []
+    when: {mode: any, rules: [{field: aenderungen, op: contains, values: [name]}, {field: aenderungen, op: contains, values: [funktion]}]}
+    assign: {type: stelle, stelle: personal}
+    due_hours: 48
+    why: Namens- und Funktionsänderungen müssen mit der Personalakte übereinstimmen.
+    instructions: "{{if .nachname_neu}}Name: {{.person}} → {{.nachname_neu}}, {{.c.vorname}} ({{.grund_text}}). {{end}}{{if .funktion_neu}}Funktion: „{{.person.title}}“ → „{{.funktion_neu}}“.{{end}}"
+  - id: ad
+    title: Attribute im AD ändern
+    kind: aufgabe
+    after: [fg_personal]
+    assign: {type: stelle, stelle: it_benutzer}
+    due_hours: 48
+    instructions: "Gültig ab {{datum .ab}}: {{.aenderungen_text}} für {{.person}} ({{.c.sam}})."
+    checklist:
+      - Änderungen im AD gesetzt (Skript)
+      - "{{if has .aenderungen \"name\"}}Fachverfahren über Namensänderung informiert{{else}}Kontrolle im Adressbuch{{end}}"
+    scripts:
+      - title: AD-Attribute
+        lang: powershell
+        code: |
+          $ErrorActionPreference = 'Stop'
+          $u = Get-ADUser {{ps .c.sam}} -Properties *
+          {{- if has .aenderungen "name"}}
+          # Namensänderung ({{.grund_text}})
+          $anzeige = {{ps (printf "%s, %s" .nachname_neu .c.vorname)}}
+          Set-ADUser $u -Surname {{ps .nachname_neu}} -GivenName {{ps .c.vorname}} -DisplayName $anzeige -UserPrincipalName {{ps .c.mail_neu}}
+          Rename-ADObject $u -NewName $anzeige
+          {{- end}}
+          {{- if has .aenderungen "funktion"}}
+          Set-ADUser $u -Title {{ps .funktion_neu}}
+          {{- end}}
+          {{- if has .aenderungen "raum"}}
+          Set-ADUser $u -Office {{ps .raum_neu.label}}
+          {{- end}}
+          {{- if has .aenderungen "telefon"}}
+          Set-ADUser $u -OfficePhone {{ps .telefon_neu}}
+          {{- end}}
+          {{- if has .aenderungen "vorgesetzt"}}
+          Set-ADUser $u -Manager {{ps .vorgesetzter_neu.sam}}
+          {{- end}}
+          Get-ADUser {{ps .c.sam}} -Properties DisplayName, Title, Office, OfficePhone, Manager | Format-List DisplayName, UserPrincipalName, Title, Office, OfficePhone, Manager
+  - id: mail
+    title: Mailadresse anpassen
+    kind: aufgabe
+    after: [ad]
+    when: {mode: all, rules: [{field: aenderungen, op: contains, values: [name]}]}
+    assign: {type: stelle, stelle: it_mail}
+    instructions: "Neue primäre Adresse {{.c.mail_neu}}{{if .alias}}, alte Adresse {{.person.mail}} bleibt als Alias{{end}}."
+    scripts:
+      - title: Primäre SMTP-Adresse
+        lang: powershell
+        code: |
+          Set-RemoteMailbox {{ps .c.sam}} -EmailAddressPolicyEnabled $false -PrimarySmtpAddress {{ps .c.mail_neu}}
+          {{- if not .alias}}
+          Set-RemoteMailbox {{ps .c.sam}} -EmailAddresses @{remove={{ps .person.mail}}}
+          {{- end}}
+          Get-RemoteMailbox {{ps .c.sam}} | Select-Object -ExpandProperty EmailAddresses
+  - id: fv_info
+    title: Fachverfahren über Namensänderung informieren
+    kind: info
+    after: [ad]
+    when: {mode: all, rules: [{field: aenderungen, op: contains, values: [name]}]}
+    assign: {type: stelle, stelle: fv_betreuung}
+    mail:
+      subject: "[{{.antrag.nummer}}] Namensänderung {{.person}} → {{.nachname_neu}}"
+      body: |
+        Guten Tag,
+
+        {{.person}} ({{.c.sam}}) heißt ab {{datum .ab}} „{{.nachname_neu}}, {{.c.vorname}}“. Bitte Anzeige-/Druckname in den Fachverfahren anpassen. Der Anmeldename bleibt unverändert.
+  - id: raum
+    title: Raumwechsel & Zutritt
+    kind: aufgabe
+    after: [fg_personal]
+    when: {mode: all, rules: [{field: aenderungen, op: contains, values: [raum]}]}
+    assign: {type: stelle, stelle: hausverwaltung}
+    instructions: "{{.person}} zieht zum {{datum .ab}} in {{.raum_neu}}."
+    checklist:
+      - "Schlüssel {{.raum_neu.schliessgruppe}} / Zutrittsprofil {{.raum_neu.zutritt}}"
+      - Türschild
+  - id: telefon
+    title: Telefon ändern
+    kind: aufgabe
+    after: [fg_personal]
+    when: {mode: all, rules: [{field: aenderungen, op: contains, values: [telefon]}]}
+    assign: {type: stelle, stelle: it_telefonie}
+    instructions: "{{.telefon_art_text}}: {{default .person.phone .telefon_neu}}"
+    outputs:
+      - {key: durchwahl, label: Rufnummer, type: phone, default: "{{.telefon_neu}}"}
+  - id: sonst
+    title: Sonstige Änderung umsetzen
+    kind: aufgabe
+    after: [fg_personal]
+    when: {mode: all, rules: [{field: aenderungen, op: contains, values: [sonstiges]}]}
+    assign: {type: stelle, stelle: it_benutzer}
+    instructions: "{{.sonstiges}}"
+  - id: info
+    title: Info an die Person
+    kind: info
+    after: [ad, mail, raum, telefon, sonst, fv_info]
+    assign: {type: feld, field: person}
+    mail:
+      subject: "Ihre Benutzerdaten wurden geändert ({{.antrag.nummer}})"
+      body: |
+        Guten Tag,
+
+        folgende Änderungen wurden umgesetzt: {{.aenderungen_text}}.
+        {{- if has .aenderungen "name"}}
+        Ihre neue Mailadresse lautet {{.c.mail_neu}}. Ihr Anmeldename {{.c.sam}} bleibt gleich.
+        {{- end}}

@@ -1,0 +1,182 @@
+# Skriptbausteine – im Designer per „Baustein einfügen“ in Schritte übernehmen und an die Felder anpassen.
+# Konvention: $sam wird oben im Skript aus den Antragsdaten gesetzt.
+snippets:
+  - key: kopf
+    title: Skriptkopf mit Prüfungen
+    group: Grundlagen
+    description: Modul laden, Benutzer prüfen, Fehler sofort stoppen.
+    lang: powershell
+    code: |
+      # {{.antrag.nummer}} – {{.antrag.titel}}
+      $ErrorActionPreference = 'Stop'
+      Import-Module ActiveDirectory
+      $sam = {{ps .c.sam}}
+      $user = Get-ADUser -Identity $sam -Properties MemberOf, Department, Title
+      Write-Host "Bearbeite $($user.Name) ($sam)" -ForegroundColor Cyan
+
+  - key: new_aduser
+    title: AD-Benutzer anlegen
+    group: Active Directory
+    description: New-ADUser mit Startkennwort-Abfrage und Ablaufdatum bei Befristung.
+    lang: powershell
+    code: |
+      $sam = {{ps .c.sam}}
+      if (Get-ADUser -Filter "sAMAccountName -eq '$sam'") { throw "$sam ist bereits vergeben" }
+      $pw = Read-Host -AsSecureString "Startkennwort für $sam"
+      $p = @{
+          Name                  = {{ps .c.anzeigename}}
+          GivenName             = {{ps .vorname}}
+          Surname               = {{ps .nachname}}
+          DisplayName           = {{ps .c.anzeigename}}
+          SamAccountName        = $sam
+          UserPrincipalName     = {{ps .c.upn}}
+          Path                  = {{ps .c.ou}}
+          AccountPassword       = $pw
+          ChangePasswordAtLogon = $true
+          Enabled               = $true
+      }
+      New-ADUser @p
+
+  - key: add_groups
+    title: Gruppen hinzufügen (Liste)
+    group: Active Directory
+    description: Fügt alle Gruppen einer Liste hinzu und überspringt bestehende Mitgliedschaften.
+    lang: powershell
+    code: |
+      $sam = {{ps .c.sam}}
+      $gruppen = {{psarr (pluck .programme "software.ad_gruppen")}}
+      foreach ($g in $gruppen) {
+          if ((Get-ADGroupMember $g -Recursive | Where-Object SamAccountName -eq $sam)) { Write-Host "= $g (bereits Mitglied)"; continue }
+          Add-ADGroupMember -Identity $g -Members $sam
+          Write-Host "+ $g" -ForegroundColor Green
+      }
+
+  - key: remove_groups
+    title: Gruppen entfernen (Liste)
+    group: Active Directory
+    description: Entfernt Gruppen ohne Rückfrage.
+    lang: powershell
+    code: |
+      $sam = {{ps .c.sam}}
+      $gruppen = {{psarr (pluck .software_entfaellt "ad_gruppen")}}
+      foreach ($g in $gruppen) { Remove-ADGroupMember -Identity $g -Members $sam -Confirm:$false; Write-Host "- $g" -ForegroundColor Yellow }
+
+  - key: copy_groups
+    title: Gruppen einer Referenzperson übernehmen
+    group: Active Directory
+    description: Auswahl per Out-GridView – nur bewusst gewählte Gruppen werden übernommen.
+    lang: powershell
+    code: |
+      $sam = {{ps .c.sam}}
+      Get-ADUser {{ps .referenz.sam}} -Properties MemberOf |
+        Select-Object -ExpandProperty MemberOf | Get-ADGroup |
+        Out-GridView -PassThru -Title 'Gruppen übernehmen' |
+        ForEach-Object { Add-ADGroupMember $_ -Members $sam; Write-Host "+ $($_.Name)" }
+
+  - key: set_aduser
+    title: Attribute ändern (Set-ADUser)
+    group: Active Directory
+    description: Abteilung, Funktion, Vorgesetzte, Telefon.
+    lang: powershell
+    code: |
+      Set-ADUser -Identity {{ps .person.sam}} `
+        -Department {{ps .abteilung_neu.label}} `
+        -Title {{ps .funktion_neu}} `
+        -Manager {{ps .vorgesetzter_neu.sam}}
+
+  - key: move_ou
+    title: In andere OU verschieben
+    group: Active Directory
+    description: Move-ADObject in die OU aus dem Katalog.
+    lang: powershell
+    code: |
+      Get-ADUser {{ps .person.sam}} | Move-ADObject -TargetPath {{ps .abteilung_neu.ou}}
+
+  - key: disable
+    title: Konto deaktivieren und markieren
+    group: Active Directory
+    description: Deaktivieren, Beschreibung setzen, in Deaktiviert-OU verschieben.
+    lang: powershell
+    code: |
+      $sam = {{ps .person.sam}}
+      Disable-ADAccount -Identity $sam
+      Set-ADUser $sam -Description ("Deaktiviert {0} – {{.antrag.nummer}}" -f (Get-Date -Format 'dd.MM.yyyy'))
+      Get-ADUser $sam | Move-ADObject -TargetPath {{ps .var.ou_deaktiviert}}
+
+  - key: expiry
+    title: Kontoablauf setzen
+    group: Active Directory
+    description: Konto läuft am Folgetag des Enddatums ab.
+    lang: powershell
+    code: |
+      Set-ADAccountExpiration -Identity {{ps .c.sam}} -DateTime (Get-Date {{psdate (addDays 1 .bis)}})
+
+  - key: home
+    title: Home-Verzeichnis anlegen (NTFS)
+    group: Dateiablage
+    description: "Ordner anlegen, Vollzugriff für den Benutzer, als H: eintragen."
+    lang: powershell
+    code: |
+      $sam  = {{ps .c.sam}}
+      $home = Join-Path {{ps .var.home_root}} $sam
+      New-Item -ItemType Directory -Path $home -Force | Out-Null
+      $acl = Get-Acl $home
+      $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("{{.var.domain_netbios}}\$sam", 'Modify', 'ContainerInherit,ObjectInherit', 'None', 'Allow')))
+      Set-Acl $home $acl
+      Set-ADUser $sam -HomeDirectory $home -HomeDrive 'H:'
+
+  - key: mailbox_hybrid
+    title: Postfach anlegen (Exchange Hybrid / M365)
+    group: Exchange
+    description: Enable-RemoteMailbox in der Exchange Management Shell.
+    lang: powershell
+    code: |
+      Enable-RemoteMailbox -Identity {{ps .c.sam}} -RemoteRoutingAddress ({{ps .c.sam}} + '@{{.var.m365_routing}}') -PrimarySmtpAddress {{ps .c.mail}}
+
+  - key: mailbox_onprem
+    title: Postfach anlegen (Exchange lokal)
+    group: Exchange
+    description: Enable-Mailbox auf der Standarddatenbank.
+    lang: powershell
+    code: |
+      Enable-Mailbox -Identity {{ps .c.sam}} -Database {{ps .var.exchange_db}} -PrimarySmtpAddress {{ps .c.mail}}
+
+  - key: mailbox_permission
+    title: Rechte auf Gruppenpostfach
+    group: Exchange
+    description: Vollzugriff (und Senden als) über die Berechtigungsgruppe.
+    lang: powershell
+    code: |
+      {{- range .postfaecher}}
+      Add-ADGroupMember -Identity {{ps .gruppe}} -Members {{ps $.c.sam}}   # {{.adresse}}
+      {{- end}}
+
+  - key: shared_forward
+    title: In freigegebenes Postfach umwandeln + Weiterleitung
+    group: Exchange
+    description: Für Austritte – Postfach bleibt erreichbar, Nachfolge erhält Zugriff.
+    lang: powershell
+    code: |
+      $mb = {{ps .person.mail}}
+      Set-Mailbox $mb -Type Shared
+      Add-MailboxPermission $mb -User {{ps .nachfolge.mail}} -AccessRights FullAccess -AutoMapping $true
+      Set-Mailbox $mb -ForwardingAddress {{ps .nachfolge.mail}} -DeliverToMailboxAndForward $true
+
+  - key: ooo
+    title: Abwesenheitsnotiz setzen
+    group: Exchange
+    description: Automatische Antwort intern und extern.
+    lang: powershell
+    code: |
+      Set-MailboxAutoReplyConfiguration -Identity {{ps .person.mail}} -AutoReplyState Enabled `
+        -InternalMessage {{ps .abwesenheit}} -ExternalMessage {{ps .abwesenheit}}
+
+  - key: rename
+    title: Namensänderung (Anzeige, UPN, Mail)
+    group: Active Directory
+    description: Neuer Nachname inkl. neuer primärer Adresse – alte bleibt als Alias.
+    lang: powershell
+    code: |
+      $u = Get-ADUser {{ps .person.sam}}
+      Set-ADUser $u -Surname {{ps .nachname_neu}} -DisplayName ({{ps .nachname_neu}} + ', ' + $u.GivenName)
+      Rename-ADObject $u -NewName ({{ps .nachname_neu}} + ', ' + $u.GivenName)

@@ -1,0 +1,101 @@
+key: zugriff
+name: Zugriff auf Verzeichnisse & Postfächer
+description: Lese-/Änderungsrechte auf Netzlaufwerke und Funktionspostfächer – je Verzeichnis und Postfach entscheidet die verantwortliche Stelle.
+category: Berechtigungen
+icon: "📁"
+color: "#4d7c0f"
+prefix: ZG
+title_tpl: "Zugriff für {{.person}}: {{join \", \" (concat (pluck .verzeichnisse \"verzeichnis.label\") (pluck .postfaecher \"label\"))}}"
+form:
+  sections:
+    - id: person
+      title: Für wen?
+      icon: "👤"
+      fields:
+        - {key: person, label: Person, type: user, required: true, width: half}
+        - {key: vorgesetzter, label: Vorgesetzte/r, type: user, required: true, width: half}
+    - id: verzeichnisse
+      title: Verzeichnisse
+      icon: "📁"
+      fields:
+        - key: verzeichnisse
+          label: Verzeichnisse
+          type: group
+          add_label: Verzeichnis hinzufügen
+          item_label: Verzeichnis
+          fields:
+            - {key: verzeichnis, label: Verzeichnis, type: catalog, catalog: verzeichnisse, required: true, width: half}
+            - {key: zugriff, label: Zugriff, type: radio, required: true, default: lesen, width: half, options: [{value: lesen, label: Lesen}, {value: aendern, label: Ändern}]}
+            - {key: bis, label: Befristet bis, type: date, width: half}
+    - id: postfaecher
+      title: Funktionspostfächer
+      icon: "📮"
+      fields:
+        - {key: postfaecher, label: Postfächer, type: catalog, catalog: postfaecher, multi: true}
+        - {key: hinweis_leer, type: info, tone: warn, label: "Bitte mindestens ein Verzeichnis oder Postfach angeben.", show: {mode: all, rules: [{field: verzeichnisse, op: count_lt, values: ["1"]}, {field: postfaecher, op: unset}]}}
+    - id: begruendung
+      title: Begründung
+      icon: "💬"
+      fields:
+        - {key: begruendung, label: "Wofür wird der Zugriff benötigt?", type: textarea, required: true}
+computed:
+  - {key: sam, label: Benutzername, tpl: "{{.person.sam}}"}
+steps:
+  - id: fg_vorgesetzt
+    title: Freigabe Vorgesetzte/r
+    kind: freigabe
+    after: []
+    assign: {type: feld, field: vorgesetzter}
+    why: Bedarf bestätigen.
+  - id: fg_daten
+    title: Freigabe Dateneigentümer
+    kind: freigabe
+    after: [fg_vorgesetzt]
+    foreach: verzeichnisse
+    assign: {type: katalog, field: verzeichnis, attr: eigentuemer}
+    why: Dateneigentümer entscheiden über Zugriffe.
+    instructions: "{{.item.verzeichnis}} – {{.item.zugriff_text}}{{if .item.bis}} bis {{datum .item.bis}}{{end}} für {{.person}}. Begründung: {{.begruendung}}"
+  - id: fg_postfach
+    title: Freigabe Postfachverantwortliche
+    kind: freigabe
+    after: [fg_vorgesetzt]
+    foreach: postfaecher
+    assign: {type: katalog, field: postfaecher, attr: verantwortlich}
+    why: Zugriff auf Funktionspostfächer nur nach Freigabe der Verantwortlichen.
+    instructions: "Postfach {{.item.adresse}} für {{.person}}. Begründung: {{.begruendung}}"
+  - id: rechte
+    title: Berechtigungen setzen
+    kind: aufgabe
+    after: [fg_daten, fg_postfach]
+    assign: {type: stelle, stelle: it_benutzer}
+    instructions: Alle freigegebenen Zugriffe über die Berechtigungsgruppen setzen.
+    scripts:
+      - title: Gruppen setzen
+        lang: powershell
+        code: |
+          $sam = {{ps .c.sam}}
+          {{- range .verzeichnisse}}
+          Add-ADGroupMember -Identity {{if eq .zugriff "aendern"}}{{ps .verzeichnis.gruppe_rw}}{{else}}{{ps .verzeichnis.gruppe_ro}}{{end}} -Members $sam   # {{.verzeichnis.pfad}}{{if .bis}} – befristet bis {{datum .bis}}{{end}}
+          {{- end}}
+          {{- range .postfaecher}}
+          Add-ADGroupMember -Identity {{ps .gruppe}} -Members $sam   # {{.adresse}}{{if eq .sendas "ja"}} (Senden als über Gruppe){{end}}
+          {{- end}}
+  - id: info
+    title: Info an die Person
+    kind: info
+    after: [rechte]
+    assign: {type: feld, field: person}
+    mail:
+      subject: "Zugriffe eingerichtet ({{.antrag.nummer}})"
+      body: |
+        Guten Tag {{.person.given}},
+
+        Ihre Zugriffe sind eingerichtet:
+        {{- range .verzeichnisse}}
+          • {{.verzeichnis}} ({{.verzeichnis.pfad}}) – {{.zugriff_text}}
+        {{- end}}
+        {{- range .postfaecher}}
+          • Postfach {{.adresse}}
+        {{- end}}
+
+        Bitte einmal ab- und wieder anmelden.

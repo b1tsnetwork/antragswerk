@@ -1,0 +1,95 @@
+key: ausnahme
+name: Sicherheitsausnahme (USB, Webseite, Adminrechte)
+description: Befristete Ausnahme von Sicherheitsvorgaben – z. B. USB-Datenträger, gesperrte Webseite oder lokale Adminrechte – mit Freigabe durch Informationssicherheit und automatischem Rückbau.
+category: Sicherheit
+icon: "🔓"
+color: "#b42318"
+prefix: SEC
+title_tpl: "Ausnahme {{.art_text}} für {{.person}} bis {{datum .bis}}"
+intro: Ausnahmen werden grundsätzlich befristet und am Enddatum automatisch zurückgenommen. Bitte so konkret wie möglich begründen.
+form:
+  sections:
+    - id: ausnahme
+      title: Ausnahme
+      icon: "🔓"
+      fields:
+        - {key: person, label: Person, type: user, required: true, width: half}
+        - {key: vorgesetzter, label: Vorgesetzte/r, type: user, required: true, width: half}
+        - key: art
+          label: Art
+          type: radio
+          required: true
+          options: [{value: usb, label: USB-Datenträger freigeben}, {value: web, label: Webseite freischalten}, {value: admin, label: Lokale Adminrechte}, {value: software, label: Nicht freigegebene Software}]
+        - {key: web, label: Adresse (URL), type: text, required: true, placeholder: "https://…", show: {mode: all, rules: [{field: art, op: eq, values: [web]}]}}
+        - {key: geraet, label: Gerätename, type: text, required: true, width: half, placeholder: "z. B. PC-32-0412", show: {mode: any, rules: [{field: art, op: eq, values: [usb]}, {field: art, op: eq, values: [admin]}, {field: art, op: eq, values: [software]}]}}
+        - {key: software, label: Software, type: text, required: true, width: half, show: {mode: all, rules: [{field: art, op: eq, values: [software]}]}}
+        - {key: begruendung, label: Begründung, type: textarea, required: true}
+        - {key: bis, label: Befristet bis, type: date, required: true, width: half, help: "max. 6 Monate"}
+computed:
+  - {key: sam, label: Benutzername, tpl: "{{.person.sam}}"}
+steps:
+  - id: fg_vorgesetzt
+    title: Freigabe Vorgesetzte/r
+    kind: freigabe
+    after: []
+    assign: {type: feld, field: vorgesetzter}
+    why: Die Führungskraft bestätigt den dienstlichen Bedarf der Ausnahme.
+  - id: fg_isb
+    title: Freigabe Informationssicherheit
+    kind: freigabe
+    after: [fg_vorgesetzt]
+    assign: {type: stelle, stelle: isb}
+    due_hours: 72
+    why: Ausnahmen schwächen Schutzmaßnahmen – Risiko, Umfang und Befristung werden bewertet und dokumentiert.
+    instructions: "{{.art_text}}{{if .web}}: {{.web}}{{end}}{{if .geraet}} auf {{.geraet}}{{end}}{{if .software}} ({{.software}}){{end}} bis {{datum .bis}}. Begründung: {{.begruendung}}"
+    checklist:
+      - Risiko bewertet
+      - Mildere Alternative geprüft
+  - id: umsetzen
+    title: Ausnahme umsetzen
+    kind: aufgabe
+    after: [fg_isb]
+    assign: {type: stelle, stelle: it_client}
+    instructions: "{{.art_text}} für {{.person}}{{if .geraet}} auf {{.geraet}}{{end}} bis {{datum .bis}}."
+    scripts:
+      - title: Umsetzen
+        lang: powershell
+        code: |
+          {{- if eq .art "usb"}}
+          Add-ADGroupMember 'GG-GPO-USB-Ausnahme' -Members (Get-ADComputer {{ps .geraet}})
+          {{- else if eq .art "admin"}}
+          Add-ADGroupMember ('GG-LocalAdmin-' + {{ps .geraet}}) -Members {{ps .c.sam}}
+          {{- else if eq .art "web"}}
+          # Proxy-/Filter-Ausnahme für {{.web}} im Webfilter eintragen (Kommentar: {{.antrag.nummer}}, bis {{datum .bis}})
+          {{- else}}
+          # Software {{ps .software}} auf {{ps .geraet}} bereitstellen (AppLocker-Ausnahme / Softwareverteilung)
+          {{- end}}
+  - id: ende
+    title: Enddatum abwarten
+    kind: warten
+    after: [umsetzen]
+    wait_field: bis
+    wait_offset: 1
+  - id: rueckbau
+    title: Ausnahme zurücknehmen
+    kind: aufgabe
+    after: [ende]
+    assign: {type: stelle, stelle: it_client}
+    scripts:
+      - title: Rückbau
+        lang: powershell
+        code: |
+          {{- if eq .art "usb"}}
+          Remove-ADGroupMember 'GG-GPO-USB-Ausnahme' -Members (Get-ADComputer {{ps .geraet}}) -Confirm:$false
+          {{- else if eq .art "admin"}}
+          Remove-ADGroupMember ('GG-LocalAdmin-' + {{ps .geraet}}) -Members {{ps .c.sam}} -Confirm:$false
+          {{- else if eq .art "web"}}
+          # Ausnahme für {{.web}} im Webfilter entfernen
+          {{- else}}
+          # Software {{ps .software}} von {{ps .geraet}} entfernen
+          {{- end}}
+  - id: info_isb
+    title: Abschluss an Informationssicherheit
+    kind: info
+    after: [rueckbau]
+    assign: {type: stelle, stelle: isb}

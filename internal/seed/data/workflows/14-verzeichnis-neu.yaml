@@ -1,0 +1,100 @@
+key: verzeichnis_neu
+name: Neues Verzeichnis / Netzlaufwerk anlegen
+description: Ablage mit Berechtigungsgruppen (Lesen/Ändern) und Dateneigentümer einrichten – danach im Katalog für Zugriffsanträge verfügbar.
+category: Berechtigungen
+icon: "🗂"
+color: "#4d7c0f"
+prefix: VZ
+title_tpl: "Neues Verzeichnis „{{.name}}“ ({{.abteilung}})"
+form:
+  sections:
+    - id: ablage
+      title: Ablage
+      icon: "🗂"
+      fields:
+        - {key: abteilung, label: Organisationseinheit, type: catalog, catalog: abteilungen, required: true, width: half}
+        - {key: name, label: Ordnername, type: text, required: true, width: half, pattern: '^[A-Za-z0-9ÄÖÜäöüß _.-]{2,40}$', pattern_msg: "2–40 Zeichen, keine Sonderzeichen wie \\ / : * ? \" < > |"}
+        - {key: zweck, label: Zweck / Inhalt, type: textarea, required: true}
+        - {key: schutzbedarf, label: Schutzbedarf, type: radio, required: true, default: normal, options: [{value: normal, label: Normal}, {value: hoch, label: Hoch (personenbezogene Daten)}, {value: sehr_hoch, label: Sehr hoch / VS-NfD}]}
+        - {key: eigentuemer, label: Dateneigentümer/in, type: user, required: true, width: half, help: "entscheidet künftig über Zugriffe"}
+    - id: mitglieder
+      title: Erste Zugriffe
+      icon: "👥"
+      fields:
+        - key: mitglieder
+          label: Personen
+          type: group
+          add_label: Person hinzufügen
+          item_label: Person
+          fields:
+            - {key: person, label: Person, type: user, required: true, width: half}
+            - {key: zugriff, label: Zugriff, type: radio, required: true, default: aendern, width: half, options: [{value: lesen, label: Lesen}, {value: aendern, label: Ändern}]}
+computed:
+  - {key: kurz, label: Kurzname, tpl: "{{replace \" \" \"-\" (ascii .name)}}"}
+  - {key: pfad, label: Pfad, tpl: "{{.abteilung.laufwerk}}\\{{.name}}"}
+  - {key: gruppe_ro, label: Gruppe Lesen, tpl: "DL-FS01-{{replace \".\" \"-\" .abteilung.key}}-{{.c.kurz}}-R"}
+  - {key: gruppe_rw, label: Gruppe Ändern, tpl: "DL-FS01-{{replace \".\" \"-\" .abteilung.key}}-{{.c.kurz}}-M"}
+steps:
+  - id: fg_leitung
+    title: Freigabe Leitung der Organisationseinheit
+    kind: freigabe
+    after: []
+    assign: {type: katalog, field: abteilung, attr: leitung}
+    why: Die Leitung bestätigt Bedarf und die benannte Dateneigentümerin bzw. den Dateneigentümer.
+  - id: fg_dsb
+    title: Prüfung Datenschutz
+    kind: freigabe
+    after: [fg_leitung]
+    when: {mode: all, rules: [{field: schutzbedarf, op: ne, values: [normal]}]}
+    assign: {type: stelle, stelle: datenschutz}
+    why: Bei erhöhtem Schutzbedarf werden Zugriffskreis und Ablageort geprüft.
+  - id: anlegen
+    title: Ordner und Gruppen anlegen
+    kind: aufgabe
+    after: [fg_dsb]
+    assign: {type: stelle, stelle: it_benutzer}
+    instructions: "Pfad **{{.c.pfad}}**, Gruppen {{.c.gruppe_ro}} / {{.c.gruppe_rw}}, Schutzbedarf {{.schutzbedarf_text}}."
+    checklist:
+      - Ordner und Gruppen angelegt (Skript)
+      - Vererbung unterbrochen, nur Gruppen berechtigt
+      - Erste Mitglieder gesetzt
+    scripts:
+      - title: Anlegen
+        lang: powershell
+        code: |
+          $ErrorActionPreference = 'Stop'
+          $pfad = {{ps .c.pfad}}
+          $ro = {{ps .c.gruppe_ro}}; $rw = {{ps .c.gruppe_rw}}
+          New-ADGroup -Name $ro -GroupScope DomainLocal -GroupCategory Security -Description ("Lesen " + $pfad + " · {{.antrag.nummer}}")
+          New-ADGroup -Name $rw -GroupScope DomainLocal -GroupCategory Security -Description ("Ändern " + $pfad + " · {{.antrag.nummer}}")
+          New-Item -ItemType Directory -Path $pfad | Out-Null
+          $acl = Get-Acl $pfad
+          $acl.SetAccessRuleProtection($true, $true)
+          $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("{{.var.domain_netbios}}\$ro", 'ReadAndExecute', 'ContainerInherit,ObjectInherit', 'None', 'Allow')))
+          $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("{{.var.domain_netbios}}\$rw", 'Modify', 'ContainerInherit,ObjectInherit', 'None', 'Allow')))
+          Set-Acl $pfad $acl
+          {{- range .mitglieder}}
+          Add-ADGroupMember {{if eq .zugriff "aendern"}}$rw{{else}}$ro{{end}} -Members {{ps .person.sam}}   # {{.person.name}}
+          {{- end}}
+  - id: katalog
+    title: In Katalog „Verzeichnisse“ aufnehmen
+    kind: aufgabe
+    after: [anlegen]
+    assign: {type: stelle, stelle: aw_admin}
+    instructions: "Stammdaten → Kataloge → Verzeichnisse & Freigaben: neuer Eintrag."
+    checklist:
+      - "Bezeichnung: {{.abteilung.label}} – {{.name}} (Gruppe {{.abteilung.label}})"
+      - "Pfad {{.c.pfad}}, Gruppen {{.c.gruppe_ro}} / {{.c.gruppe_rw}}"
+      - "Dateneigentümer/in {{.eigentuemer.mail}}"
+  - id: info
+    title: Info an Dateneigentümer/in
+    kind: info
+    after: [katalog]
+    assign: {type: feld, field: eigentuemer}
+    mail:
+      subject: "Ablage {{.c.pfad}} ist eingerichtet"
+      body: |
+        Guten Tag {{.eigentuemer.name}},
+
+        die Ablage {{.c.pfad}} ist eingerichtet. Sie sind als Dateneigentümer/in eingetragen und entscheiden künftig über Zugriffe
+        (Anträge „Zugriff auf Verzeichnisse & Postfächer“ kommen zur Freigabe zu Ihnen).

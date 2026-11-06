@@ -1,0 +1,110 @@
+key: vpn
+name: Mobiles Arbeiten / VPN-Zugang
+description: Fernzugriff für mobiles Arbeiten – mit Bestätigung der Nutzungsvereinbarung durch die Personalabteilung, MFA-Einrichtung und optionaler Befristung.
+category: Zugänge & Geräte
+icon: "🏠"
+color: "#0f766e"
+prefix: VPN
+title_tpl: "VPN-Zugang für {{.person}}{{if .bis}} bis {{datum .bis}}{{end}}"
+form:
+  sections:
+    - id: person
+      title: Person
+      icon: "👤"
+      fields:
+        - {key: person, label: Person, type: user, required: true, width: half}
+        - {key: vorgesetzter, label: Vorgesetzte/r, type: user, required: true, width: half}
+        - {key: ab, label: Ab, type: date, required: true, width: third}
+        - {key: bis, label: Befristet bis, type: date, width: third, help: "leer = unbefristet"}
+        - {key: umfang, label: Umfang, type: select, required: true, width: third, default: regel, options: [{value: regel, label: Regelmäßig (Telearbeit)}, {value: gelegentlich, label: Gelegentlich}, {value: bereitschaft, label: Rufbereitschaft}]}
+    - id: technik
+      title: Technik
+      icon: "💻"
+      fields:
+        - {key: geraet, label: Gerät, type: radio, required: true, default: vorhanden, options: [{value: vorhanden, label: Vorhandenes Dienst-Notebook}, {value: neu, label: Dienst-Notebook wird benötigt}]}
+        - {key: mfa, label: Zweiter Faktor, type: radio, required: true, default: app, options: [{value: app, label: Authenticator-App (Diensthandy)}, {value: token, label: Hardware-Token}]}
+        - {key: vereinbarung, label: Die Vereinbarung „Mobiles Arbeiten“ ist unterschrieben, type: checkbox, required: true}
+computed:
+  - {key: sam, label: Benutzername, tpl: "{{.person.sam}}"}
+steps:
+  - id: fg_vorgesetzt
+    title: Freigabe Vorgesetzte/r
+    kind: freigabe
+    after: []
+    assign: {type: feld, field: vorgesetzter}
+    due_hours: 72
+    why: Mobiles Arbeiten setzt die dienstliche Zustimmung voraus.
+  - id: fg_personal
+    title: Vereinbarung bestätigen
+    kind: freigabe
+    after: [fg_vorgesetzt]
+    assign: {type: stelle, stelle: personal}
+    why: Die unterschriebene Vereinbarung muss in der Personalakte vorliegen (Dienstvereinbarung Telearbeit).
+  - id: geraet
+    title: Dienst-Notebook bereitstellen
+    kind: aufgabe
+    after: [fg_vorgesetzt]
+    when: {mode: all, rules: [{field: geraet, op: eq, values: [neu]}]}
+    assign: {type: stelle, stelle: it_client}
+    checklist:
+      - Notebook mit Festplattenverschlüsselung und VPN-Client vorbereitet
+      - An die Person übergeben
+    outputs:
+      - {key: inventar, label: Inventarnummer, type: text}
+  - id: token
+    title: Hardware-Token ausgeben
+    kind: aufgabe
+    after: [fg_vorgesetzt]
+    when: {mode: all, rules: [{field: mfa, op: eq, values: [token]}]}
+    assign: {type: stelle, stelle: it_benutzer}
+    instructions: "Hardware-Token für {{.person}} aus dem Bestand nehmen, dem Konto {{.c.sam}} zuordnen und persönlich übergeben."
+    outputs:
+      - {key: seriennummer, label: Token-Seriennummer, type: text, required: true}
+  - id: vpn
+    title: VPN freischalten
+    kind: aufgabe
+    after: [fg_personal, geraet, token]
+    assign: {type: stelle, stelle: it_benutzer}
+    instructions: "{{.person}} ({{.c.sam}}) ab {{datum .ab}}{{if .bis}} bis {{datum .bis}}{{end}}, MFA: {{.mfa_text}}{{if .out.token.seriennummer}} ({{.out.token.seriennummer}}){{end}}."
+    checklist:
+      - "Mitglied in {{.var.vpn_gruppe}}"
+      - MFA registriert und Anmeldung getestet
+      - Kurzanleitung übergeben
+    scripts:
+      - title: VPN-Gruppe
+        lang: powershell
+        code: |
+          Add-ADGroupMember {{ps .var.vpn_gruppe}} -Members {{ps .c.sam}}
+          {{- if .bis}}
+          # Befristung bis {{datum .bis}} – Entfernung wird als eigener Schritt angelegt
+          {{- end}}
+  - id: info
+    title: Info an die Person
+    kind: info
+    after: [vpn]
+    assign: {type: feld, field: person}
+    mail:
+      subject: "Ihr VPN-Zugang ist eingerichtet"
+      body: |
+        Guten Tag {{.person.given}},
+
+        Ihr Zugang für mobiles Arbeiten ist ab {{datum .ab}} freigeschaltet{{if .bis}} (bis {{datum .bis}}){{end}}.
+        Bitte nur mit dem Dienstgerät verbinden und die Kurzanleitung beachten.
+  - id: ende
+    title: Befristung abwarten
+    kind: warten
+    after: [vpn]
+    when: {mode: all, rules: [{field: bis, op: set}]}
+    wait_field: bis
+    wait_offset: 1
+  - id: entfernen
+    title: VPN-Zugang entfernen
+    kind: aufgabe
+    after: [ende]
+    when: {mode: all, rules: [{field: bis, op: set}]}
+    assign: {type: stelle, stelle: it_benutzer}
+    scripts:
+      - title: Entfernen
+        lang: powershell
+        code: |
+          Remove-ADGroupMember {{ps .var.vpn_gruppe}} -Members {{ps .c.sam}} -Confirm:$false

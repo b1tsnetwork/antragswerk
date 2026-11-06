@@ -1,0 +1,171 @@
+# Kataloge = Stammdaten mit frei definierbaren Attributen.
+# Attribute stehen in Skripten/Mails als {{.feld.attribut}} bereit, z. B. {{.abteilung.ou}} oder {{range .programme}}{{.software.ad_gruppen}}{{end}}.
+# Zuständigkeits-Attribute (leitung, verantwortlich, eigentuemer, betreuung) enthalten Stellen-Schlüssel, Mail-Adressen oder Anmeldenamen (mehrere mit ;).
+catalogs:
+  - key: abteilungen
+    name: Organisationseinheiten
+    icon: "🏛"
+    description: Ämter und Abteilungen mit OU, Standardgruppen, Laufwerk und Leitung.
+    attrs:
+      - {key: ou, label: OU (DN), hint: "Ziel-OU für Benutzerkonten"}
+      - {key: gruppen, label: Standardgruppen, hint: "AD-Gruppen, die jede Person der Einheit erhält (; getrennt)"}
+      - {key: laufwerk, label: Abteilungslaufwerk}
+      - {key: leitung, label: Leitung, hint: "Stelle, Mail oder Anmeldename – gibt Wechsel frei"}
+      - {key: kostenstelle, label: Kostenstelle}
+      - {key: verteiler, label: Mail-Verteiler}
+    entries:
+      - key: "10"
+        label: Personal (10)
+        group: Dezernat I
+        attrs: {ou: "OU=10-Personal,OU=Benutzer,OU=Stadt,DC=demo-stadt,DC=local", gruppen: "GG-10-Personal;GG-Laufwerk-10-RW", laufwerk: '\\fs01\abteilung$\10', leitung: "a.becker@demo-stadt.de", kostenstelle: "1010", verteiler: "personal@demo-stadt.de"}
+      - key: "10.3"
+        label: Zentrale Dienste (10.3)
+        group: Dezernat I
+        attrs: {ou: "OU=10-3-ZentraleDienste,OU=Benutzer,OU=Stadt,DC=demo-stadt,DC=local", gruppen: "GG-10-3-ZD;GG-Laufwerk-10-3-RW", laufwerk: '\\fs01\abteilung$\10-3', leitung: "k.richter@demo-stadt.de", kostenstelle: "1030", verteiler: "zentrale-dienste@demo-stadt.de"}
+      - key: "11"
+        label: IT (11)
+        group: Dezernat I
+        attrs: {ou: "OU=11-IT,OU=Benutzer,OU=Stadt,DC=demo-stadt,DC=local", gruppen: "GG-11-IT;GG-Laufwerk-11-RW", laufwerk: '\\fs01\abteilung$\11', leitung: "admin@demo-stadt.de", kostenstelle: "1100", verteiler: "it@demo-stadt.de"}
+      - key: "20"
+        label: Kämmerei (20)
+        group: Dezernat II
+        attrs: {ou: "OU=20-Kaemmerei,OU=Benutzer,OU=Stadt,DC=demo-stadt,DC=local", gruppen: "GG-20-Kaemmerei;GG-Laufwerk-20-RW", laufwerk: '\\fs01\abteilung$\20', leitung: "s.wagner@demo-stadt.de", kostenstelle: "2000", verteiler: "kaemmerei@demo-stadt.de"}
+      - key: "32"
+        label: Bürgerservice (32)
+        group: Dezernat III
+        attrs: {ou: "OU=32-Buergerservice,OU=Benutzer,OU=Stadt,DC=demo-stadt,DC=local", gruppen: "GG-32-Buergerservice;GG-Laufwerk-32-RW;GG-Kasse-Terminal", laufwerk: '\\fs01\abteilung$\32', leitung: "m.schulz@demo-stadt.de", kostenstelle: "3200", verteiler: "buergerservice@demo-stadt.de"}
+      - key: "32.1"
+        label: Ordnungsamt (32.1)
+        group: Dezernat III
+        attrs: {ou: "OU=32-1-Ordnungsamt,OU=Benutzer,OU=Stadt,DC=demo-stadt,DC=local", gruppen: "GG-32-1-Ordnung;GG-Laufwerk-32-1-RW", laufwerk: '\\fs01\abteilung$\32-1', leitung: "r.mueller@demo-stadt.de", kostenstelle: "3210", verteiler: "ordnungsamt@demo-stadt.de"}
+      - key: "51"
+        label: Jugendamt (51)
+        group: Dezernat IV
+        attrs: {ou: "OU=51-Jugendamt,OU=Benutzer,OU=Stadt,DC=demo-stadt,DC=local", gruppen: "GG-51-Jugend;GG-Laufwerk-51-RW", laufwerk: '\\fs01\abteilung$\51', leitung: "m.lange@demo-stadt.de", kostenstelle: "5100", verteiler: "jugendamt@demo-stadt.de"}
+      - key: "60"
+        label: Bauamt (60)
+        group: Dezernat V
+        attrs: {ou: "OU=60-Bauamt,OU=Benutzer,OU=Stadt,DC=demo-stadt,DC=local", gruppen: "GG-60-Bau;GG-Laufwerk-60-RW;GG-Plotter-60", laufwerk: '\\fs01\abteilung$\60', leitung: "c.fischer@demo-stadt.de", kostenstelle: "6000", verteiler: "bauamt@demo-stadt.de"}
+
+  - key: software
+    name: Programme & Fachverfahren
+    icon: "🧩"
+    description: Software mit AD-Gruppen, Verfahrensverantwortung und Einrichtung im Verfahren.
+    attrs:
+      - {key: ad_gruppen, label: AD-Gruppen, hint: "Berechtigungs-/Verteilungsgruppen (; getrennt)"}
+      - {key: verantwortlich, label: Verfahrensverantwortliche/r, hint: "gibt den Zugang frei"}
+      - {key: freigabe, label: Freigabe nötig, hint: "ja / nein"}
+      - {key: eigenes_konto, label: Eigenes Konto im Verfahren, hint: "ja = Fachverfahrensbetreuung richtet Benutzer/Rollen ein"}
+      - {key: betreuung, label: Einrichtung durch, hint: "Stelle für Konto/Rollen im Verfahren"}
+      - {key: lizenz, label: Lizenzpflichtig, hint: "ja = IT-Arbeitsplatz installiert/lizenziert"}
+      - {key: rollen, label: Rollen im Verfahren, hint: "Auswahlhilfe für Antragstellende"}
+      - {key: schutzbedarf, label: Schutzbedarf}
+    entries:
+      - key: office
+        label: Microsoft 365 Apps (Office)
+        group: Standard
+        attrs: {ad_gruppen: "SW-M365-Apps", verantwortlich: "it_client", freigabe: "nein", eigenes_konto: "nein", lizenz: "ja", rollen: "", schutzbedarf: normal}
+      - key: acrobat
+        label: Adobe Acrobat Pro
+        group: Standard
+        attrs: {ad_gruppen: "SW-Acrobat-Pro", verantwortlich: "it_client", freigabe: "nein", eigenes_konto: "nein", lizenz: "ja", schutzbedarf: normal}
+      - key: dms
+        label: Dokumentenmanagement (E-Akte)
+        group: Querschnitt
+        attrs: {ad_gruppen: "SW-DMS-Benutzer", verantwortlich: "it_benutzer", freigabe: "ja", eigenes_konto: "ja", betreuung: "fv_betreuung", lizenz: "nein", rollen: "Sachbearbeitung; Registratur; Leitung", schutzbedarf: hoch}
+      - key: ewo
+        label: Einwohnermeldewesen (EWO)
+        group: Fachverfahren
+        attrs: {ad_gruppen: "FV-EWO-Benutzer;FV-EWO-Citrix", verantwortlich: "l.weber@demo-stadt.de", freigabe: "ja", eigenes_konto: "ja", betreuung: "fv_betreuung", lizenz: "nein", rollen: "Auskunft; Sachbearbeitung; Sachbearbeitung + Pass/PA; Fachadministration", schutzbedarf: sehr hoch}
+      - key: gewerbe
+        label: Gewerbeverfahren
+        group: Fachverfahren
+        attrs: {ad_gruppen: "FV-Gewerbe-Benutzer", verantwortlich: "l.weber@demo-stadt.de", freigabe: "ja", eigenes_konto: "ja", betreuung: "fv_betreuung", lizenz: "nein", rollen: "Lesen; Sachbearbeitung", schutzbedarf: hoch}
+      - key: finanzen
+        label: Finanzsoftware (Doppik)
+        group: Fachverfahren
+        attrs: {ad_gruppen: "FV-Finanz-Benutzer;FV-Finanz-RDS", verantwortlich: "s.wagner@demo-stadt.de", freigabe: "ja", eigenes_konto: "ja", betreuung: "fv_betreuung", lizenz: "nein", rollen: "Anordnung; Feststellung (sachlich); Feststellung (rechnerisch); Kasse; Haushaltsplanung", schutzbedarf: hoch}
+      - key: jugend
+        label: Jugendhilfe-Fachverfahren
+        group: Fachverfahren
+        attrs: {ad_gruppen: "FV-Jugend-Benutzer", verantwortlich: "m.lange@demo-stadt.de", freigabe: "ja", eigenes_konto: "ja", betreuung: "fv_betreuung", lizenz: "nein", rollen: "ASD; Wirtschaftliche Jugendhilfe; Kita-Verwaltung", schutzbedarf: sehr hoch}
+      - key: cad
+        label: CAD (Bauplanung)
+        group: Fachanwendung
+        attrs: {ad_gruppen: "SW-CAD", verantwortlich: "c.fischer@demo-stadt.de", freigabe: "ja", eigenes_konto: "nein", lizenz: "ja", schutzbedarf: normal}
+      - key: gis
+        label: GIS / Geoportal-Desktop
+        group: Fachanwendung
+        attrs: {ad_gruppen: "SW-GIS;GIS-Daten-Lesen", verantwortlich: "c.fischer@demo-stadt.de", freigabe: "ja", eigenes_konto: "nein", lizenz: "ja", schutzbedarf: normal}
+      - key: zeiterfassung
+        label: Zeiterfassung
+        group: Querschnitt
+        attrs: {ad_gruppen: "SW-Zeiterfassung", verantwortlich: "personal", freigabe: "nein", eigenes_konto: "ja", betreuung: "personal", lizenz: "nein", rollen: "Mitarbeitende; Vorgesetzte; Zeitbeauftragte", schutzbedarf: hoch}
+
+  - key: verzeichnisse
+    name: Verzeichnisse & Freigaben
+    icon: "📁"
+    description: Netzlaufwerke mit Berechtigungsgruppen (Lesen/Ändern) und Dateneigentümer.
+    attrs:
+      - {key: pfad, label: Pfad (UNC)}
+      - {key: gruppe_ro, label: Gruppe Lesen}
+      - {key: gruppe_rw, label: Gruppe Ändern}
+      - {key: eigentuemer, label: Dateneigentümer/in, hint: "gibt Zugriffe frei"}
+    entries:
+      - key: kaemmerei-haushalt
+        label: Kämmerei – Haushalt
+        group: Kämmerei (20)
+        attrs: {pfad: '\\fs01\abteilung$\20\Haushalt', gruppe_ro: "DL-FS01-20-Haushalt-R", gruppe_rw: "DL-FS01-20-Haushalt-M", eigentuemer: "s.wagner@demo-stadt.de"}
+      - key: kaemmerei-kasse
+        label: Kämmerei – Stadtkasse
+        group: Kämmerei (20)
+        attrs: {pfad: '\\fs01\abteilung$\20\Kasse', gruppe_ro: "DL-FS01-20-Kasse-R", gruppe_rw: "DL-FS01-20-Kasse-M", eigentuemer: "f.krause@demo-stadt.de"}
+      - key: buergerservice-vorlagen
+        label: Bürgerservice – Vorlagen
+        group: Bürgerservice (32)
+        attrs: {pfad: '\\fs01\abteilung$\32\Vorlagen', gruppe_ro: "DL-FS01-32-Vorlagen-R", gruppe_rw: "DL-FS01-32-Vorlagen-M", eigentuemer: "m.schulz@demo-stadt.de"}
+      - key: bau-planung
+        label: Bauamt – Planung
+        group: Bauamt (60)
+        attrs: {pfad: '\\fs01\abteilung$\60\Planung', gruppe_ro: "DL-FS01-60-Planung-R", gruppe_rw: "DL-FS01-60-Planung-M", eigentuemer: "c.fischer@demo-stadt.de"}
+      - key: personal-akten
+        label: Personal – Personalakten (VS-NfD)
+        group: Personal (10)
+        attrs: {pfad: '\\fs01\abteilung$\10\Akten', gruppe_ro: "DL-FS01-10-Akten-R", gruppe_rw: "DL-FS01-10-Akten-M", eigentuemer: "a.becker@demo-stadt.de"}
+      - key: projekte-digitalisierung
+        label: Projekte – Digitalisierung
+        group: Ämterübergreifend
+        attrs: {pfad: '\\fs01\projekte$\Digitalisierung', gruppe_ro: "DL-FS01-Proj-Digi-R", gruppe_rw: "DL-FS01-Proj-Digi-M", eigentuemer: "admin@demo-stadt.de"}
+
+  - key: raeume
+    name: Räume
+    icon: "🚪"
+    description: Büros mit Schließgruppe und Zutrittsprofil. Schlüssel = Raumangabe wie im Telefonbuch.
+    attrs:
+      - {key: gebaeude, label: Gebäude}
+      - {key: etage, label: Etage}
+      - {key: schliessgruppe, label: Schließgruppe}
+      - {key: zutritt, label: Zutrittsprofil}
+      - {key: drucker, label: Etagendrucker}
+    entries:
+      - {key: "Rathaus A 1.12", label: "Rathaus A 1.12", group: Rathaus A, attrs: {gebaeude: Rathaus A, etage: "1", schliessgruppe: "A1-Büro", zutritt: "ZP-Rathaus-A-Standard", drucker: '\\print01\A1-Flur'}}
+      - {key: "Rathaus A 2.08", label: "Rathaus A 2.08", group: Rathaus A, attrs: {gebaeude: Rathaus A, etage: "2", schliessgruppe: "A2-Kasse", zutritt: "ZP-Rathaus-A-Kasse", drucker: '\\print01\A2-Kasse'}}
+      - {key: "Rathaus B 0.04", label: "Rathaus B 0.04 (Bürgerbüro)", group: Rathaus B, attrs: {gebaeude: Rathaus B, etage: "0", schliessgruppe: "B0-Bürgerbüro", zutritt: "ZP-Rathaus-B-Buergerbuero", drucker: '\\print01\B0-Theke'}}
+      - {key: "Rathaus B 1.07", label: "Rathaus B 1.07", group: Rathaus B, attrs: {gebaeude: Rathaus B, etage: "1", schliessgruppe: "B1-Büro", zutritt: "ZP-Rathaus-B-Standard", drucker: '\\print01\B1-Flur'}}
+      - {key: "Rathaus C 1.03", label: "Rathaus C 1.03 (IT)", group: Rathaus C, attrs: {gebaeude: Rathaus C, etage: "1", schliessgruppe: "C1-IT", zutritt: "ZP-IT-Technik", drucker: '\\print01\C1-IT'}}
+      - {key: "Technisches Rathaus 3.12", label: "Technisches Rathaus 3.12", group: Technisches Rathaus, attrs: {gebaeude: Technisches Rathaus, etage: "3", schliessgruppe: "TR3-Büro", zutritt: "ZP-TR-Standard", drucker: '\\print01\TR3-Plotter'}}
+
+  - key: postfaecher
+    name: Funktions- & Gruppenpostfächer
+    icon: "📮"
+    description: Gemeinsame Postfächer mit Berechtigungsgruppe und Verantwortlichen.
+    attrs:
+      - {key: adresse, label: Adresse}
+      - {key: gruppe, label: Berechtigungsgruppe (Vollzugriff)}
+      - {key: sendas, label: "Senden als (ja/nein)"}
+      - {key: verantwortlich, label: Verantwortlich, hint: "gibt Zugriffe frei"}
+    entries:
+      - {key: buergerservice, label: "buergerservice@", attrs: {adresse: buergerservice@demo-stadt.de, gruppe: "MB-Buergerservice-FA", sendas: "ja", verantwortlich: "m.schulz@demo-stadt.de"}}
+      - {key: kasse, label: "stadtkasse@", attrs: {adresse: stadtkasse@demo-stadt.de, gruppe: "MB-Stadtkasse-FA", sendas: "ja", verantwortlich: "f.krause@demo-stadt.de"}}
+      - {key: bauantrag, label: "bauantraege@", attrs: {adresse: bauantraege@demo-stadt.de, gruppe: "MB-Bauantraege-FA", sendas: "nein", verantwortlich: "c.fischer@demo-stadt.de"}}
+      - {key: personal, label: "bewerbungen@", attrs: {adresse: bewerbungen@demo-stadt.de, gruppe: "MB-Bewerbungen-FA", sendas: "ja", verantwortlich: "a.becker@demo-stadt.de"}}

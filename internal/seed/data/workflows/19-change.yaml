@@ -1,0 +1,91 @@
+key: change
+name: Änderung an der IT (Change)
+description: Geplante Änderung an Servern, Netz oder Fachverfahren beantragen – mit Freigabe im Antragswerk und anschließender Umsetzung als Change in GLPI (Genehmigung durch das CAB, Einführungs- und Rückfallplan).
+category: IT-Betrieb
+icon: "⚙"
+color: "#3a4f85"
+prefix: CHG
+title_tpl: "Change: {{.titel}}"
+intro: Für geplante Änderungen mit Auswirkung auf den Betrieb. Störungen bitte direkt an den IT-Service melden.
+form:
+  sections:
+    - id: was
+      title: Was soll geändert werden?
+      icon: "⚙"
+      fields:
+        - {key: titel, label: Kurzbeschreibung, type: text, required: true, placeholder: "z. B. Firewall-Regel für das neue Bürgerportal"}
+        - {key: system, label: Betroffenes System, type: select, required: true, width: half, options: [{value: netz, label: Netzwerk / Firewall}, {value: server, label: Server / Virtualisierung}, {value: fachverfahren, label: Fachverfahren}, {value: client, label: Arbeitsplätze}, {value: sonstiges, label: Sonstiges}]}
+        - {key: termin, label: Gewünschter Termin, type: date, required: true, width: half}
+        - {key: beschreibung, label: Beschreibung, type: textarea, required: true}
+        - {key: begruendung, label: Begründung / Nutzen, type: textarea, required: true}
+    - id: risiko
+      title: Risiko und Planung
+      icon: "🛡"
+      fields:
+        - {key: auswirkung, label: Auswirkung, type: radio, required: true, width: half, options: [{value: "2", label: gering}, {value: "3", label: mittel}, {value: "4", label: hoch}]}
+        - {key: ausfall, label: Ausfallzeit nötig, type: checkbox, width: half}
+        - {key: ausfall_info, label: Ausfallzeit, type: text, placeholder: "z. B. 30 Minuten, Di 18:00", show: {mode: all, rules: [{field: ausfall, op: true}]}}
+        - {key: plan, label: Einführungsplan, type: textarea, required: true, placeholder: "Schritte der Umsetzung"}
+        - {key: rueckfall, label: Rückfallplan, type: textarea, required: true, placeholder: "Wie wird die Änderung zurückgenommen?"}
+        - {key: test, label: Test / Abnahme, type: textarea}
+steps:
+  - id: fg_leitung
+    title: Freigabe IT-Leitung
+    kind: freigabe
+    after: []
+    assign: {type: stelle, stelle: it_leitung}
+    why: Termin, Ressourcen und Risiko werden vor der Übergabe an das Change-Management geprüft.
+    instructions: "**{{.titel}}** ({{.system_text}}) zum {{datum .termin}} · Auswirkung {{.auswirkung_text}}{{if .ausfall}} · Ausfallzeit: {{.ausfall_info}}{{end}}"
+  - id: change
+    title: Change in GLPI
+    kind: glpi
+    after: [fg_leitung]
+    assign: {type: stelle, stelle: it_leitung}
+    instructions: Falls GLPI nicht erreichbar ist, den Change bitte manuell in GLPI anlegen und hier mit der Change-Nummer erledigen.
+    outputs:
+      - {key: umgesetzt_am, label: Umgesetzt am, type: text}
+      - {key: hinweis, label: Hinweis der Umsetzung, type: textarea}
+    glpi:
+      type: change
+      name: "{{.titel}} ({{.antrag.nummer}})"
+      content: |
+        {{.beschreibung}}
+
+        Begründung: {{.begruendung}}
+        System: {{.system_text}} · Wunschtermin: {{datum .termin}}{{if .ausfall}} · Ausfallzeit: {{.ausfall_info}}{{end}}
+        Beantragt von {{.antrag.antragsteller_name}}, freigegeben von {{.out.fg_leitung.von}}.
+
+        Vorgang im Antragswerk: {{.glpi.vorgang}}
+        Nach der Umsetzung bitte zurückmelden: {{.glpi.rueckmeldung}}
+        (oder den Change auf „Angewendet“ setzen und in der Lösung „Umgesetzt am: …“ angeben)
+      urgency: "3"
+      impact: "{{.auswirkung}}"
+      category: IT > Infrastruktur-Änderung
+      due_date: "{{.termin}}"
+      rollout_plan: "{{.plan}}"
+      backout_plan: "{{.rueckfall}}"
+      control_content: "{{.test}}"
+      impact_content: "Auswirkung: {{.auswirkung_text}}{{if .ausfall}}, Ausfallzeit {{.ausfall_info}}{{end}}"
+      team:
+        - {role: assigned, type: Group, value: "{{if eq .system \"client\"}}IT-Arbeitsplatz{{else}}IT-Benutzerverwaltung{{end}}"}
+        - {role: requester, type: User, value: "{{.antrag.antragsteller}}"}
+      tasks:
+        - {content: "Umsetzung gemäß Einführungsplan: {{.titel}}", duration: "60", begin: "{{.termin}} 08:00"}
+        - {content: "Test und Abnahme: {{.test}}", duration: "30", when: {mode: all, rules: [{field: test, op: set}]}}
+      validation: {approver_type: Group, approver: Change Advisory Board, comment: "Bitte Change {{.titel}} zum {{datum .termin}} bewerten."}
+      on_fail: ablehnen
+  - id: info
+    title: Info an Antragsteller/in
+    kind: info
+    after: [change]
+    assign: {type: antragsteller}
+    mail:
+      subject: "Change umgesetzt: {{.titel}} ({{.antrag.nummer}})"
+      body: |
+        Guten Tag,
+
+        die Änderung „{{.titel}}“ wurde umgesetzt (GLPI-Change #{{.out.change.glpi_id}}{{if .out.change.umgesetzt_am}}, am {{.out.change.umgesetzt_am}}{{end}}).
+        {{if .out.change.hinweis}}
+        Hinweis: {{.out.change.hinweis}}
+        {{end}}
+        Details: {{.out.change.glpi_url}}

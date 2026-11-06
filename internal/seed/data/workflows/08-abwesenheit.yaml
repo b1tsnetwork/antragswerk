@@ -1,0 +1,160 @@
+key: abwesenheit
+name: Langzeitabwesenheit (Elternzeit, Sabbatical, Krankheit)
+description: Konto für die Dauer der Abwesenheit pausieren, Postfach-Vertretung einrichten und rechtzeitig vor der Rückkehr alles wieder freischalten.
+category: Benutzer & Konten
+icon: "🌴"
+color: "#0f766e"
+prefix: ABW
+title_tpl: "Abwesenheit {{.person}} {{datum .von}} – {{if .bis}}{{datum .bis}}{{else}}offen{{end}}"
+intro: Für Abwesenheiten ab ca. 6 Wochen. Ruhende Konten senken das Risiko unbemerkter Fremdnutzung. Die Gründe werden nicht abgefragt – nur die Art (für Fristen).
+form:
+  sections:
+    - id: person
+      title: Person & Zeitraum
+      icon: "👤"
+      fields:
+        - {key: person, label: Person, type: user, required: true, width: half}
+        - {key: vorgesetzter, label: Vorgesetzte/r, type: user, required: true, width: half}
+        - {key: art, label: Art, type: select, required: true, width: third, options: [{value: elternzeit, label: Elternzeit}, {value: sabbatical, label: Sabbatical / Sonderurlaub}, {value: langzeit, label: Längere Abwesenheit}, {value: abordnung, label: Abordnung}]}
+        - {key: von, label: Ab, type: date, required: true, width: third}
+        - {key: bis, label: Voraussichtlich bis, type: date, width: third, help: "leer = offen; Reaktivierung dann per eigenem Antrag"}
+    - id: konto
+      title: Konto & Postfach
+      icon: "🔐"
+      fields:
+        - {key: konto, label: Konto während der Abwesenheit, type: radio, required: true, default: pausieren, options: [{value: pausieren, label: Deaktivieren (empfohlen)}, {value: aktiv, label: Aktiv lassen (z. B. Teilzeit in Elternzeit)}]}
+        - key: aktiv_grund
+          label: Begründung für aktives Konto
+          type: textarea
+          required: true
+          show: {mode: all, rules: [{field: konto, op: eq, values: [aktiv]}]}
+        - {key: vertretung, label: Vertretung erhält Zugriff auf das Postfach, type: user, width: half}
+        - {key: weiterleitung, label: Eingehende Mails weiterleiten, type: checkbox, width: half}
+        - {key: abwesenheit, label: Abwesenheitsnotiz, type: textarea, default: "Ich bin längere Zeit abwesend. Ihre Nachricht wird nicht gelesen. Bitte wenden Sie sich an die Vertretung bzw. das Funktionspostfach der Abteilung."}
+        - {key: geraet, label: Gerät wird zurückgegeben, type: checkbox, width: half}
+computed:
+  - {key: sam, label: Benutzername, tpl: "{{.person.sam}}"}
+steps:
+  - id: fg_personal
+    title: Bestätigung Personalabteilung
+    kind: freigabe
+    after: []
+    assign: {type: stelle, stelle: personal}
+    due_hours: 48
+    why: Zeitraum und Art der Abwesenheit müssen mit der Personalakte übereinstimmen.
+    instructions: "{{.person}} – {{.art_text}} ab {{datum .von}}{{if .bis}} bis voraussichtlich {{datum .bis}}{{end}}. Konto: {{.konto_text}}."
+  - id: start
+    title: Beginn abwarten
+    kind: warten
+    after: [fg_personal]
+    wait_field: von
+  - id: pausieren
+    title: Konto pausieren
+    kind: aufgabe
+    after: [start]
+    when: {mode: all, rules: [{field: konto, op: eq, values: [pausieren]}]}
+    assign: {type: stelle, stelle: it_benutzer}
+    why: Nicht genutzte Konten sind ein häufiges Einfallstor (BSI ORP.4).
+    checklist:
+      - Konto deaktiviert und in die Pausiert-OU verschoben
+      - Gruppenmitgliedschaften bleiben erhalten (nicht entfernen)
+      - Aktive Sitzungen beendet
+    scripts:
+      - title: Pausieren
+        lang: powershell
+        code: |
+          $sam = {{ps .c.sam}}
+          $u = Get-ADUser $sam -Properties Description
+          # alte OU merken, um sie bei der Rückkehr wiederherzustellen
+          Set-ADUser $u -Description ("Pausiert {{datum .von}}–{{if .bis}}{{datum .bis}}{{else}}offen{{end}} ({{.antrag.nummer}}) | OU: " + ($u.DistinguishedName -replace '^CN=[^,]+,',''))
+          Disable-ADAccount $sam
+          Move-ADObject $u -TargetPath {{ps .var.ou_pausiert}}
+  - id: postfach
+    title: Postfach-Vertretung & Abwesenheitsnotiz
+    kind: aufgabe
+    after: [start]
+    assign: {type: stelle, stelle: it_mail}
+    scripts:
+      - title: Postfach
+        lang: powershell
+        code: |
+          $mb = {{ps .person.mail}}
+          Set-MailboxAutoReplyConfiguration $mb -AutoReplyState Enabled -InternalMessage {{ps .abwesenheit}} -ExternalMessage {{ps .abwesenheit}}
+          {{- if .vertretung.mail}}
+          Add-MailboxPermission $mb -User {{ps .vertretung.mail}} -AccessRights FullAccess -AutoMapping $true
+          {{- if .weiterleitung}}
+          Set-Mailbox $mb -ForwardingAddress {{ps .vertretung.mail}} -DeliverToMailboxAndForward $true
+          {{- end}}
+          {{- end}}
+  - id: geraet
+    title: Gerät zurücknehmen
+    kind: aufgabe
+    after: [fg_personal]
+    when: {mode: all, rules: [{field: geraet, op: "true"}]}
+    assign: {type: stelle, stelle: it_client}
+    instructions: "Gerät von {{.person}} vor dem {{datum .von}} zurücknehmen und für die Rückkehr reservieren bzw. neu vergeben."
+    outputs:
+      - {key: inventar, label: Inventarnummer, type: text}
+  - id: vorab
+    title: Rückkehr ankündigen
+    kind: warten
+    after: [pausieren, postfach]
+    when: {mode: all, rules: [{field: bis, op: set}]}
+    wait_field: bis
+    wait_offset: -10
+  - id: info_rueckkehr
+    title: Info an Vorgesetzte/n – Rückkehr in 10 Tagen
+    kind: info
+    after: [vorab]
+    when: {mode: all, rules: [{field: bis, op: set}]}
+    assign: {type: feld, field: vorgesetzter}
+    mail:
+      subject: "[{{.antrag.nummer}}] {{.person}} kehrt voraussichtlich am {{datum (addDays 1 .bis)}} zurück"
+      body: |
+        Guten Tag {{.vorgesetzter.name}},
+
+        die Abwesenheit von {{.person}} endet laut Antrag am {{datum .bis}}. Das Konto wird am Rückkehrtag automatisch zur Reaktivierung vorgelegt.
+        Ändert sich der Termin, stellen Sie bitte eine Rückfrage im Vorgang oder melden sich bei der IT.
+
+        {{.antrag.link}}
+  - id: rueckkehr
+    title: Rückkehrtag abwarten
+    kind: warten
+    after: [vorab]
+    when: {mode: all, rules: [{field: bis, op: set}]}
+    wait_field: bis
+    wait_offset: 1
+  - id: reaktivieren
+    title: Konto reaktivieren & Postfach zurückstellen
+    kind: aufgabe
+    after: [rueckkehr, info_rueckkehr]
+    when: {mode: all, rules: [{field: bis, op: set}]}
+    assign: {type: stelle, stelle: it_benutzer}
+    checklist:
+      - Konto aktiviert und in die ursprüngliche OU zurückverschoben
+      - Kennwortwechsel bei der nächsten Anmeldung erzwungen
+      - Abwesenheitsnotiz, Weiterleitung und Vertretungszugriff entfernt
+      - Gerät bereitgestellt
+    scripts:
+      - title: Reaktivieren
+        lang: powershell
+        code: |
+          {{- if eq .konto "pausieren"}}
+          $sam = {{ps .c.sam}}
+          $u = Get-ADUser $sam -Properties Description
+          $ou = ($u.Description -split '\| OU: ')[1]
+          Enable-ADAccount $sam
+          if ($ou) { Move-ADObject $u -TargetPath $ou }
+          Set-ADUser $sam -ChangePasswordAtLogon $true -Description $null
+          {{- else}}
+          # Konto blieb aktiv – nichts zu tun.
+          {{- end}}
+      - title: Postfach zurückstellen
+        lang: powershell
+        code: |
+          $mb = {{ps .person.mail}}
+          Set-MailboxAutoReplyConfiguration $mb -AutoReplyState Disabled
+          Set-Mailbox $mb -ForwardingAddress $null
+          {{- if .vertretung.mail}}
+          Remove-MailboxPermission $mb -User {{ps .vertretung.mail}} -AccessRights FullAccess -Confirm:$false
+          {{- end}}

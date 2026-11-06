@@ -1,0 +1,106 @@
+key: verlust
+name: Verlust oder Diebstahl (Gerät, Token, Ausweis)
+description: Sofortmaßnahmen bei Verlust – Sitzungen beenden, Geräte sperren und löschen, Ausweis und Schlüssel sperren, Meldepflicht prüfen und Ersatz bereitstellen. Alles startet ohne Freigabe sofort.
+category: Sicherheit
+icon: "🚨"
+color: "#b42318"
+prefix: VL
+title_tpl: "Verlust: {{.was_text}} – {{.person}}"
+intro: Bitte sofort melden – auch bei Verdacht. Alle Sperrmaßnahmen starten parallel und ohne Freigabe.
+form:
+  sections:
+    - id: verlust
+      title: "Was ist passiert?"
+      icon: "🚨"
+      fields:
+        - {key: person, label: Betroffene Person, type: user, required: true, width: half}
+        - {key: wann, label: Bemerkt am, type: date, required: true, width: half}
+        - {key: was, label: Verloren / gestohlen, type: checkboxes, required: true, options: [{value: notebook, label: Notebook}, {value: handy, label: Diensthandy}, {value: token, label: MFA-Token / Smartcard}, {value: ausweis, label: Dienstausweis / Zutrittskarte}, {value: schluessel, label: Schlüssel}, {value: datentraeger, label: USB-Stick / Datenträger}]}
+        - {key: umstaende, label: Umstände (Ort, Zeit), type: textarea, required: true}
+        - {key: polizei, label: Diebstahl ist polizeilich angezeigt, type: checkbox, width: half}
+        - {key: daten, label: "Personenbezogene Daten betroffen?", type: radio, required: true, default: unklar, options: [{value: nein, label: Nein}, {value: ja, label: Ja}, {value: unklar, label: Unklar}]}
+computed:
+  - {key: sam, label: Benutzername, tpl: "{{.person.sam}}"}
+steps:
+  - id: konto
+    title: Sitzungen beenden & Kennwort zurücksetzen
+    kind: aufgabe
+    after: []
+    when: {mode: any, rules: [{field: was, op: contains, values: [notebook]}, {field: was, op: contains, values: [handy]}, {field: was, op: contains, values: [token]}]}
+    assign: {type: stelle, stelle: it_benutzer}
+    due_hours: 2
+    why: Mit dem Gerät oder Token könnten Dritte auf Konto und Daten zugreifen.
+    checklist:
+      - Kennwort zurückgesetzt, Person informiert
+      - Alle Sitzungen und Tokens widerrufen
+      - Verlorenes MFA-Verfahren entfernt
+    scripts:
+      - title: Sofortmaßnahmen
+        lang: powershell
+        code: |
+          $sam = {{ps .c.sam}}
+          Set-ADAccountPassword $sam -Reset -NewPassword (Read-Host -AsSecureString "Neues Kennwort")
+          Set-ADUser $sam -ChangePasswordAtLogon $true
+          Connect-MgGraph -Scopes User.ReadWrite.All, UserAuthenticationMethod.ReadWrite.All
+          Revoke-MgUserSignInSession -UserId {{ps .person.mail}}
+  - id: geraet
+    title: Geräte sperren und fernlöschen
+    kind: aufgabe
+    after: []
+    when: {mode: any, rules: [{field: was, op: contains, values: [notebook]}, {field: was, op: contains, values: [handy]}]}
+    assign: {type: stelle, stelle: it_client}
+    due_hours: 2
+    checklist:
+      - Diensthandy im MDM gesperrt und Löschung ausgelöst
+      - Notebook im AD deaktiviert, BitLocker-Schlüssel gesichert
+      - Inventar auf „verloren“ gesetzt
+    outputs:
+      - {key: geraete, label: Betroffene Geräte (Inventarnummern), type: text, required: true}
+  - id: zutritt
+    title: Ausweis und Schlüssel sperren
+    kind: aufgabe
+    after: []
+    when: {mode: any, rules: [{field: was, op: contains, values: [ausweis]}, {field: was, op: contains, values: [schluessel]}]}
+    assign: {type: stelle, stelle: hausverwaltung}
+    due_hours: 4
+    checklist:
+      - Zutrittskarte gesperrt
+      - Schließanlage geprüft (ggf. Zylinder tauschen)
+  - id: isb
+    title: Meldung an Informationssicherheit
+    kind: info
+    after: []
+    assign: {type: stelle, stelle: isb}
+    mail:
+      subject: "[{{.antrag.nummer}}] Verlust gemeldet: {{.was_text}} – {{.person}}"
+      body: |
+        Verlust/Diebstahl gemeldet am {{datum .wann}}: {{.was_text}}
+        Person: {{.person}} ({{.person.department}})
+        Umstände: {{.umstaende}}
+        Polizeilich angezeigt: {{ja .polizei}} · Personenbezogene Daten: {{.daten_text}}
+
+        Sofortmaßnahmen laufen: {{.antrag.link}}
+  - id: dsb
+    title: Meldepflicht prüfen (Art. 33 DSGVO)
+    kind: aufgabe
+    after: []
+    when: {mode: all, rules: [{field: daten, op: ne, values: [nein]}]}
+    assign: {type: stelle, stelle: datenschutz}
+    due_hours: 24
+    why: Bei Verletzung des Schutzes personenbezogener Daten muss innerhalb von 72 Stunden geprüft und ggf. gemeldet werden.
+    instructions: "Bemerkt am **{{datum .wann}}** – Frist zur Meldung an die Aufsichtsbehörde: 72 Stunden ab Kenntnis."
+    checklist:
+      - Verschlüsselung des Geräts geprüft
+      - Risiko bewertet und dokumentiert
+      - Meldung an Aufsichtsbehörde erfolgt bzw. begründet nicht erforderlich
+    outputs:
+      - {key: ergebnis, label: Ergebnis der Prüfung, type: textarea, required: true}
+  - id: ersatz
+    title: Ersatz bereitstellen
+    kind: aufgabe
+    after: [konto, geraet]
+    when: {mode: any, rules: [{field: was, op: contains, values: [notebook]}, {field: was, op: contains, values: [handy]}, {field: was, op: contains, values: [token]}]}
+    assign: {type: stelle, stelle: it_client}
+    checklist:
+      - Ersatzgerät / -token vorbereitet und übergeben
+      - MFA neu registriert

@@ -1,0 +1,223 @@
+key: wechsel
+name: Abteilungswechsel / Umsetzung
+description: Wechsel in eine andere Organisationseinheit – alte Rechte entziehen, neue Rechte nach Freigabe vergeben, Raum, Zutritt, Telefon und Arbeitsplatz umziehen.
+category: Benutzer & Konten
+icon: "🔀"
+color: "#7c3aed"
+prefix: UMS
+title_tpl: "Wechsel {{.person}}: {{.abteilung_alt}} → {{.abteilung_neu}} zum {{datum .stichtag}}"
+intro: Rechte der bisherigen Einheit werden zum Stichtag entzogen (Need-to-know). Benötigt die Person übergangsweise alte Zugänge, bitte unter „Übergang“ angeben.
+form:
+  sections:
+    - id: person
+      title: Person & Stichtag
+      icon: "👤"
+      fields:
+        - {key: person, label: Person, type: user, required: true, width: half}
+        - {key: stichtag, label: Wechsel zum, type: date, required: true, width: half}
+        - {key: abteilung_alt, label: Bisherige Organisationseinheit, type: catalog, catalog: abteilungen, required: true, width: half}
+        - {key: abteilung_neu, label: Neue Organisationseinheit, type: catalog, catalog: abteilungen, required: true, width: half}
+        - {key: hinweis_gleich, type: info, label: "Alte und neue Einheit sind identisch – für reine Funktions- oder Raumänderungen bitte den Antrag „Änderung von Benutzerdaten“ verwenden.", tone: warn, show: {mode: all, rules: [{field: abteilung_neu, op: set}, {field: abteilung_alt, op: set}, {field: abteilung_neu, op: same, values: [abteilung_alt]}]}}
+        - {key: funktion_neu, label: Neue Funktion, type: text, required: true, width: half, prefill: {from: person, attr: title}}
+        - {key: vorgesetzter_neu, label: Neue/r Vorgesetzte/r, type: user, required: true, width: half}
+    - id: arbeitsplatz
+      title: Arbeitsplatz
+      icon: "🚪"
+      fields:
+        - {key: raum_neu, label: Neuer Raum, type: catalog, catalog: raeume, width: half}
+        - {key: telefon, label: Telefon, type: radio, required: true, default: mitnehmen, width: half, options: [{value: mitnehmen, label: Nummer mitnehmen}, {value: neu, label: Neue Durchwahl}, {value: keins, label: Keine Änderung}]}
+        - {key: umzug, label: Gerät zieht mit um, type: checkbox, default: "true", width: half}
+    - id: rechte_neu
+      title: Neue Zugänge
+      icon: "➕"
+      description: Programme und Verzeichnisse, die in der neuen Einheit benötigt werden.
+      fields:
+        - key: software_neu
+          label: Programme
+          type: group
+          add_label: Programm hinzufügen
+          item_label: Programm
+          fields:
+            - {key: software, label: Programm / Fachverfahren, type: catalog, catalog: software, required: true, width: half}
+            - {key: rolle, label: Rolle, type: text, width: half}
+        - key: verzeichnisse_neu
+          label: Verzeichnisse
+          type: group
+          add_label: Verzeichnis hinzufügen
+          item_label: Verzeichnis
+          fields:
+            - {key: verzeichnis, label: Verzeichnis, type: catalog, catalog: verzeichnisse, required: true, width: half}
+            - {key: zugriff, label: Zugriff, type: radio, required: true, default: lesen, width: half, options: [{value: lesen, label: Lesen}, {value: aendern, label: Ändern}]}
+    - id: rechte_alt
+      title: Entfallende Zugänge
+      icon: "➖"
+      description: Zugänge der bisherigen Tätigkeit, die zum Stichtag entzogen werden.
+      fields:
+        - {key: software_entfaellt, label: Entfallende Programme, type: catalog, catalog: software, multi: true}
+        - {key: verzeichnisse_entfallen, label: Entfallende Verzeichnisse, type: catalog, catalog: verzeichnisse, multi: true}
+        - {key: uebergang, label: Übergangsweise behalten bis, type: date, width: half, help: "Nur mit Begründung – Entzug erfolgt dann erst zu diesem Datum."}
+        - key: uebergang_grund
+          label: Begründung Übergang
+          type: textarea
+          required: true
+          show: {mode: all, rules: [{field: uebergang, op: set}]}
+computed:
+  - {key: sam, label: Benutzername, tpl: "{{.person.sam}}"}
+  - {key: entzug_ab, label: Entzug ab, tpl: "{{if .uebergang}}{{datum .uebergang}}{{else}}{{datum .stichtag}}{{end}}"}
+steps:
+  - id: fg_alt
+    title: Freigabe abgebende Leitung
+    kind: freigabe
+    after: []
+    assign: {type: katalog, field: abteilung_alt, attr: leitung}
+    due_hours: 72
+    why: Die abgebende Leitung bestätigt Stichtag und den Entzug der bisherigen Rechte.
+    instructions: "{{.person}} wechselt zum {{datum .stichtag}} nach {{.abteilung_neu}}. Entfallende Rechte: {{default \"keine angegeben\" (join \", \" (concat .software_entfaellt .verzeichnisse_entfallen))}}"
+  - id: fg_neu
+    title: Freigabe aufnehmende Leitung
+    kind: freigabe
+    after: []
+    assign: {type: katalog, field: abteilung_neu, attr: leitung}
+    due_hours: 72
+    why: Die aufnehmende Leitung bestätigt Funktion und neue Zugänge.
+  - id: fg_verfahren
+    title: Freigabe Verfahrensverantwortung
+    kind: freigabe
+    after: [fg_neu]
+    foreach: software_neu
+    when: {mode: all, rules: [{field: item.software.freigabe, op: eq, values: ["ja"]}]}
+    assign: {type: katalog, field: software, attr: verantwortlich}
+    why: Zugang zum Fachverfahren nur nach Freigabe der Verfahrensverantwortlichen.
+    instructions: "{{.item.software}} – Rolle „{{default \"Standard\" .item.rolle}}“ für {{.person}} ({{.abteilung_neu}}, {{.funktion_neu}})"
+  - id: fg_daten
+    title: Freigabe Dateneigentümer
+    kind: freigabe
+    after: [fg_neu]
+    foreach: verzeichnisse_neu
+    assign: {type: katalog, field: verzeichnis, attr: eigentuemer}
+    why: Dateneigentümer entscheiden über Zugriffe auf ihre Ablagen.
+    instructions: "{{.item.verzeichnis}} ({{.item.verzeichnis.pfad}}) – {{.item.zugriff_text}} für {{.person}}"
+  - id: raum
+    title: Raum & Zutritt umstellen
+    kind: aufgabe
+    after: [fg_alt, fg_neu]
+    when: {mode: all, rules: [{field: raum_neu, op: set}]}
+    assign: {type: stelle, stelle: hausverwaltung}
+    instructions: "Zum {{datum .stichtag}}: {{.person}} zieht in Raum {{.raum_neu}} ({{.raum_neu.gebaeude}})."
+    checklist:
+      - "Schlüssel {{.raum_neu.schliessgruppe}} ausgeben, alte Schlüssel zurücknehmen"
+      - "Zutrittsprofil auf {{.raum_neu.zutritt}} ändern – alte Bereiche entziehen"
+      - Türschilder anpassen
+  - id: stichtag
+    title: Stichtag abwarten
+    kind: warten
+    after: [fg_alt, fg_verfahren, fg_daten]
+    wait_field: stichtag
+    wait_offset: 0
+  - id: ad_umzug
+    title: AD umstellen (OU, Attribute, Gruppen)
+    kind: aufgabe
+    after: [stichtag]
+    assign: {type: stelle, stelle: it_benutzer}
+    due_hours: 24
+    instructions: |
+      {{.person}} ({{.c.sam}}): {{.abteilung_alt}} → {{.abteilung_neu}}, neue Funktion „{{.funktion_neu}}“, Vorgesetzte/r {{.vorgesetzter_neu}}.
+      {{if .uebergang}}Übergang genehmigt: alte Abteilungs-/Verzeichnisgruppen erst ab {{datum .uebergang}} entfernen (Skript 3 dann ausführen).{{end}}
+    checklist:
+      - In neue OU verschoben, Attribute gesetzt (Skript 1)
+      - Neue Gruppen gesetzt (Skript 2)
+      - "Alte Gruppen entfernt (Skript 3, ab {{.c.entzug_ab}})"
+      - Gruppenmitgliedschaft geprüft (Skript 4)
+    scripts:
+      - title: 1 · OU und Attribute
+        lang: powershell
+        code: |
+          $ErrorActionPreference = 'Stop'
+          $sam = {{ps .c.sam}}
+          Set-ADUser $sam -Department {{ps .abteilung_neu.label}} -Title {{ps .funktion_neu}} -Manager {{ps .vorgesetzter_neu.sam}}{{if .raum_neu.key}} -Office {{ps .raum_neu.label}}{{end}}
+          Get-ADUser $sam | Move-ADObject -TargetPath {{ps .abteilung_neu.ou}}
+          Write-Host "$sam → {{.abteilung_neu.ou}}" -ForegroundColor Green
+      - title: 2 · Neue Gruppen
+        lang: powershell
+        code: |
+          $sam = {{ps .c.sam}}
+          $neu = {{psarr (split .abteilung_neu.gruppen)}}
+          {{- if .software_neu}}
+          $neu += {{psarr (pluck .software_neu "software.ad_gruppen")}}
+          {{- end}}
+          {{- range .verzeichnisse_neu}}
+          $neu += {{if eq .zugriff "aendern"}}{{ps .verzeichnis.gruppe_rw}}{{else}}{{ps .verzeichnis.gruppe_ro}}{{end}}   # {{.verzeichnis.pfad}}
+          {{- end}}
+          foreach ($g in ($neu | Select-Object -Unique)) { Add-ADGroupMember $g -Members $sam; Write-Host "+ $g" -ForegroundColor Green }
+      - title: 3 · Alte Gruppen entziehen
+        lang: powershell
+        code: |
+          # Ausführen ab {{.c.entzug_ab}}
+          $sam = {{ps .c.sam}}
+          $alt = {{psarr (split .abteilung_alt.gruppen)}}
+          {{- if .software_entfaellt}}
+          $alt += {{psarr (pluck .software_entfaellt "ad_gruppen")}}
+          {{- end}}
+          {{- range .verzeichnisse_entfallen}}
+          $alt += @({{ps .gruppe_ro}}, {{ps .gruppe_rw}})   # {{.pfad}}
+          {{- end}}
+          foreach ($g in ($alt | Select-Object -Unique)) { Remove-ADGroupMember $g -Members $sam -Confirm:$false; Write-Host "- $g" -ForegroundColor Yellow }
+      - title: 4 · Kontrolle
+        lang: powershell
+        code: |
+          Get-ADPrincipalGroupMembership {{ps .c.sam}} | Sort-Object Name | Select-Object Name, GroupCategory | Format-Table -AutoSize
+  - id: fv_entzug
+    title: Rechte im Fachverfahren entziehen
+    kind: aufgabe
+    after: [stichtag]
+    foreach: software_entfaellt
+    when: {mode: all, rules: [{field: item.eigenes_konto, op: eq, values: ["ja"]}]}
+    assign: {type: katalog, field: software_entfaellt, attr: betreuung}
+    instructions: "{{.item}}: Rollen von {{.person}} ({{.c.sam}}) entziehen bzw. Konto sperren – ab {{.c.entzug_ab}}."
+    checklist:
+      - Rollen entzogen / Konto gesperrt
+      - Offene Vorgänge der Person übergeben
+  - id: fv_neu
+    title: Konto im Fachverfahren einrichten
+    kind: aufgabe
+    after: [ad_umzug]
+    foreach: software_neu
+    when: {mode: all, rules: [{field: item.software.eigenes_konto, op: eq, values: ["ja"]}]}
+    assign: {type: katalog, field: software, attr: betreuung}
+    instructions: "{{.item.software}}: {{.c.sam}} mit Rolle „{{default \"Standard\" .item.rolle}}“ einrichten."
+    checklist:
+      - Benutzer/Rolle eingerichtet
+  - id: telefon
+    title: Telefon umstellen
+    kind: aufgabe
+    after: [stichtag]
+    when: {mode: all, rules: [{field: telefon, op: ne, values: [keins]}]}
+    assign: {type: stelle, stelle: it_telefonie}
+    instructions: "{{if eq .telefon \"mitnehmen\"}}Nummer {{.person.phone}} in {{default \"neuen Raum\" .raum_neu}} umziehen.{{else}}Neue Durchwahl vergeben, alte Nummer {{.person.phone}} freigeben.{{end}}"
+    outputs:
+      - {key: durchwahl, label: Durchwahl, type: text, default: "{{.person.phone}}"}
+  - id: umzug
+    title: Arbeitsplatz umziehen
+    kind: aufgabe
+    after: [stichtag]
+    when: {mode: all, rules: [{field: umzug, op: "true"}]}
+    assign: {type: stelle, stelle: it_client}
+    instructions: "Gerät von {{.person.office}} nach {{default \"(Raum folgt)\" .raum_neu}} umziehen; Softwareverteilung für {{.abteilung_neu}} prüfen."
+    checklist:
+      - Gerät umgezogen und getestet
+      - Druckerzuordnung {{.raum_neu.drucker}} angepasst
+  - id: info
+    title: Abschlussinfo an Person und Leitung
+    kind: info
+    after: [ad_umzug, fv_neu, fv_entzug, raum, telefon, umzug]
+    assign: {type: feld, field: vorgesetzter_neu}
+    mail:
+      subject: "[{{.antrag.nummer}}] Wechsel von {{.person}} umgesetzt"
+      body: |
+        Guten Tag,
+
+        der Wechsel von {{.person}} nach {{.abteilung_neu}} ist umgesetzt.
+        Neue Zugänge: {{default "keine" (join ", " (pluck .software_neu "software.label"))}}
+        Entzogen ab {{.c.entzug_ab}}: {{default "keine" (join ", " (concat .software_entfaellt .verzeichnisse_entfallen))}}
+
+        {{.antrag.link}}

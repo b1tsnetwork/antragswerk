@@ -1,0 +1,154 @@
+key: adminkonto
+name: Administratives Konto (Tier-Modell)
+description: Separates, befristetes Admin-Konto nach Tier-Modell – mit Freigabe durch Vorgesetzte und Informationssicherheit, Ablaufdatum, Erinnerung vor Ablauf und automatischer Sperrung.
+category: Berechtigungen
+icon: "🛡"
+color: "#b42318"
+prefix: ADM
+title_tpl: "Admin-Konto {{.tier_text}} für {{.person}}"
+intro: Privilegierte Rechte nur über ein eigenes Konto, nur auf der passenden Ebene und nur befristet. Anmeldung mit Admin-Konten ausschließlich von PAW/Admin-Arbeitsplätzen der jeweiligen Ebene.
+form:
+  sections:
+    - id: person
+      title: Person
+      icon: "👤"
+      fields:
+        - {key: person, label: Person, type: user, required: true, width: half}
+        - {key: vorgesetzter, label: Vorgesetzte/r, type: user, required: true, width: half}
+    - id: konto
+      title: Ebene & Zweck
+      icon: "🛡"
+      fields:
+        - key: tier
+          label: Ebene
+          type: radio
+          required: true
+          default: t2
+          options: [{value: t0, label: "Tier 0 – Domäne/Identität (DCs, PKI, AD-Admin)"}, {value: t1, label: "Tier 1 – Server & Fachverfahren"}, {value: t2, label: "Tier 2 – Clients & Support"}]
+        - {key: hinweis_t0, type: info, tone: warn, label: "Tier 0: Nur für einen sehr kleinen Personenkreis. Zusätzlich Freigabe der IT-Leitung, Smartcard-Pflicht, keine Mailbox.", show: {mode: all, rules: [{field: tier, op: eq, values: [t0]}]}}
+        - {key: zweck, label: "Wofür werden die Rechte benötigt?", type: textarea, required: true}
+        - {key: bis, label: Befristet bis, type: date, required: true, width: half, help: "max. 12 Monate, danach Verlängerung per neuem Antrag"}
+        - {key: paw, label: PAW / Admin-Arbeitsplatz vorhanden, type: checkbox, width: half}
+        - key: systeme
+          label: Systeme und Rechte
+          type: group
+          add_label: System hinzufügen
+          item_label: System
+          min: 1
+          required: true
+          fields:
+            - {key: system, label: System / Gruppe, type: text, required: true, width: half, placeholder: "z. B. Fileserver FS01, SQL-Cluster"}
+            - {key: rolle, label: Rechte, type: select, required: true, width: half, options: [{value: lesen, label: Lesen/Überwachung}, {value: betrieb, label: Betrieb}, {value: voll, label: Vollzugriff}]}
+computed:
+  - {key: sam, label: Admin-Konto, tpl: "{{default (printf \"%s%s-%s\" .var.admin_praefix .tier (replace \".\" \"\" .person.sam)) .out.konto.sam}}"}
+  - {key: ou, label: Ziel-OU, tpl: "{{if eq .tier \"t0\"}}{{.var.ou_admin_t0}}{{else if eq .tier \"t1\"}}{{.var.ou_admin_t1}}{{else}}{{.var.ou_admin_t2}}{{end}}"}
+steps:
+  - id: fg_vorgesetzt
+    title: Freigabe Vorgesetzte/r
+    kind: freigabe
+    after: []
+    assign: {type: feld, field: vorgesetzter}
+    why: Bestätigt, dass die Tätigkeit administrative Rechte erfordert.
+  - id: fg_isb
+    title: Freigabe Informationssicherheit
+    kind: freigabe
+    after: [fg_vorgesetzt]
+    assign: {type: stelle, stelle: isb}
+    due_hours: 72
+    why: Privilegierte Konten sind das wichtigste Angriffsziel – Ebene, Umfang und Befristung werden geprüft (BSI ORP.4, OPS.1.1.2).
+    instructions: |
+      {{.person}} – {{.tier_text}} bis {{datum .bis}}{{if not .paw}} · **kein PAW angegeben**{{end}}
+      Systeme: {{range $i, $s := .systeme}}{{if $i}}, {{end}}{{$s.system}} ({{$s.rolle_text}}){{end}}
+      Zweck: {{.zweck}}
+    checklist:
+      - Ebene passt zur Tätigkeit
+      - Rechteumfang minimal
+      - Befristung angemessen
+  - id: fg_leitung
+    title: Freigabe IT-Leitung (Tier 0)
+    kind: freigabe
+    after: [fg_isb]
+    when: {mode: all, rules: [{field: tier, op: eq, values: [t0]}]}
+    assign: {type: stelle, stelle: it_leitung}
+    why: Tier-0-Konten haben Vollzugriff auf die gesamte Domäne.
+  - id: konto
+    title: Admin-Konto anlegen
+    kind: aufgabe
+    after: [fg_leitung]
+    assign: {type: stelle, stelle: it_benutzer}
+    instructions: "Konto **{{.c.sam}}** in {{.c.ou}}, gültig bis {{datum .bis}}. Kein Postfach, keine Weiterleitung, nicht in Standardgruppen."
+    checklist:
+      - Konto angelegt, „sensibel – nicht delegierbar“ gesetzt
+      - "Mitglied in Protected Users{{if eq .tier \"t0\"}} und Smartcard erzwungen{{end}}"
+      - Rechte gemäß Freigabe über Gruppen gesetzt
+      - Anmeldebeschränkung auf PAW/Admin-Arbeitsplätze der Ebene (Authentication Policy / GPO)
+    outputs:
+      - {key: sam, label: Angelegtes Konto, type: text, required: true, default: "{{.c.sam}}"}
+    scripts:
+      - title: Konto anlegen
+        lang: powershell
+        code: |
+          $ErrorActionPreference = 'Stop'
+          $sam = {{ps .c.sam}}
+          $pw = Read-Host -AsSecureString "Startkennwort für $sam"
+          New-ADUser -Name ($sam) -DisplayName ({{ps .person.name}} + ' (Admin {{upper .tier}})') -SamAccountName $sam `
+            -UserPrincipalName ($sam + '@{{.var.upn_suffix}}') -Path {{ps .c.ou}} -Description {{ps (printf "%s · %s" .tier_text .antrag.nummer)}} `
+            -AccountExpirationDate (Get-Date {{psdate (addDays 1 .bis)}}) -AccountPassword $pw -ChangePasswordAtLogon $true -Enabled $true
+          Set-ADAccountControl $sam -AccountNotDelegated $true
+          Add-ADGroupMember 'Protected Users' -Members $sam
+          {{- if eq .tier "t0"}}
+          Set-ADUser $sam -SmartcardLogonRequired $true
+          {{- end}}
+          # Rechte je System:
+          {{- range .systeme}}
+          # {{.system}} – {{.rolle_text}}
+          {{- end}}
+  - id: info_person
+    title: Info an die Person
+    kind: info
+    after: [konto]
+    assign: {type: feld, field: person}
+    mail:
+      subject: "Ihr Admin-Konto {{.c.sam}} ist eingerichtet"
+      body: |
+        Guten Tag {{.person.given}},
+
+        Ihr Konto {{.c.sam}} ({{.tier_text}}) ist bis {{datum .bis}} gültig. Bitte nur für administrative Tätigkeiten
+        und nur von einem Admin-Arbeitsplatz der passenden Ebene verwenden – nie für Mail oder Internet.
+  - id: vorab
+    title: Ablauf in 14 Tagen
+    kind: warten
+    after: [konto]
+    wait_field: bis
+    wait_offset: -14
+  - id: info_ablauf
+    title: Erinnerung vor Ablauf
+    kind: info
+    after: [vorab]
+    assign: {type: feld, field: person}
+    mail:
+      subject: "Ihr Admin-Konto {{.c.sam}} läuft am {{datum .bis}} ab"
+      body: |
+        Guten Tag {{.person.given}},
+
+        Ihr Admin-Konto {{.c.sam}} läuft am {{datum .bis}} ab. Wird es weiter benötigt, stellen Sie bitte rechtzeitig einen neuen Antrag
+        „Administratives Konto“ – die Freigaben werden dabei erneut geprüft.
+  - id: ende
+    title: Ablaufdatum abwarten
+    kind: warten
+    after: [vorab]
+    wait_field: bis
+    wait_offset: 1
+  - id: sperren
+    title: Admin-Konto sperren
+    kind: aufgabe
+    after: [ende]
+    assign: {type: stelle, stelle: it_benutzer}
+    instructions: "Konto {{.c.sam}} ist abgelaufen – deaktivieren und Gruppen entfernen, sofern kein Folgeantrag vorliegt."
+    scripts:
+      - title: Sperren
+        lang: powershell
+        code: |
+          $sam = {{ps .c.sam}}
+          Disable-ADAccount $sam
+          Get-ADPrincipalGroupMembership $sam | Where-Object Name -ne 'Domain Users' | ForEach-Object { Remove-ADGroupMember $_ -Members $sam -Confirm:$false }

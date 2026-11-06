@@ -1,0 +1,14 @@
+# Stellen = zuständige Organisationseinheiten/Rollen. Bearbeiten dürfen: Mitglieder (Mail/Anmeldename) oder Mitglieder der AD-Gruppe.
+# Mails gehen an das Funktionspostfach (falls gesetzt), sonst an die Mitglieder.
+stellen:
+  - {key: it_benutzer, name: IT-Benutzerverwaltung, color: "#1f5fbf", email: it-benutzer@demo-stadt.de, members: [t.klein, admin], group: "GG-IT-Benutzerverwaltung", description: "AD-Konten, Gruppen, Laufwerke, VPN"}
+  - {key: it_mail, name: Exchange / M365, color: "#0e7490", email: it-mail@demo-stadt.de, members: [j.hoffmann, admin], group: "GG-IT-Exchange", description: "Postfächer, Verteiler, Berechtigungen"}
+  - {key: it_client, name: IT-Arbeitsplatz, color: "#7c3aed", email: it-arbeitsplatz@demo-stadt.de, members: [t.klein, admin], group: "GG-IT-Client", description: "Hardware, Software-Verteilung, Lizenzen, Mobilgeräte"}
+  - {key: it_telefonie, name: Telefonie, color: "#0f766e", email: telefonie@demo-stadt.de, members: [j.hoffmann, admin], group: "GG-IT-Telefonie", description: "Rufnummern, Endgeräte, Softphone"}
+  - {key: fv_betreuung, name: Fachverfahrensbetreuung, color: "#b45309", email: fachverfahren@demo-stadt.de, members: [l.weber, admin], group: "GG-Fachverfahrensbetreuung", description: "Konten und Rollen in Fachverfahren"}
+  - {key: hausverwaltung, name: Hausverwaltung / Zutritt, color: "#4d7c0f", email: hausverwaltung@demo-stadt.de, members: [k.richter], group: "GG-Hausverwaltung", description: "Räume, Schlüssel, Zutrittskarten, Namensschilder"}
+  - {key: personal, name: Personalabteilung, color: "#be185d", email: personal@demo-stadt.de, members: [a.becker], group: "GG-10-Personal", description: "Personaldaten, Ein- und Austritte"}
+  - {key: isb, name: Informationssicherheit (ISB), color: "#b42318", email: isb@demo-stadt.de, members: [admin], group: "GG-ISB", description: "Externe Zugänge, privilegierte Rechte, Ausnahmen"}
+  - {key: datenschutz, name: Datenschutz (DSB), color: "#6d28d9", email: datenschutz@demo-stadt.de, members: [admin], group: "GG-Datenschutz", description: "Auftragsverarbeitung, Zugriff auf personenbezogene Daten"}
+  - {key: it_leitung, name: IT-Leitung, color: "#1e293b", email: it-leitung@demo-stadt.de, members: [admin], group: "GG-IT-Leitung", description: "Grundsatzentscheidungen, Tier-0-Freigaben"}
+  - {key: aw_admin, name: Antragswerk-Administration, color: "#475467", email: antragswerk@demo-stadt.de, members: [admin], group: "GG-Antragswerk-Admins", description: "Pflege von Katalogen und Abläufen"}

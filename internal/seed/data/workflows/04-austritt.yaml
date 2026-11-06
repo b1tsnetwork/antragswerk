@@ -1,0 +1,214 @@
+key: austritt
+name: Austritt / Benutzer löschen
+description: Konto zum letzten Arbeitstag sperren, Postfach und Daten übergeben, Hardware, Schlüssel und Ausweis zurücknehmen und nach Ablauf der Löschfrist endgültig löschen.
+category: Benutzer & Konten
+icon: "🚪"
+color: "#b42318"
+prefix: AUS
+title_tpl: "Austritt {{.person}} zum {{datum .letzter_tag}}"
+intro: Das Konto wird am letzten Arbeitstag um 7 Uhr zur Deaktivierung fällig. Gelöscht wird erst nach der Löschfrist und nach erneuter Bestätigung.
+form:
+  sections:
+    - id: person
+      title: Person
+      icon: "👤"
+      fields:
+        - {key: person, label: Person, type: user, required: true, width: half}
+        - {key: letzter_tag, label: Letzter Arbeitstag, type: date, required: true, width: half}
+        - {key: grund, label: Anlass, type: select, required: true, width: half, options: [{value: ruhestand, label: Ruhestand}, {value: kuendigung, label: Kündigung}, {value: befristung, label: Ende der Befristung}, {value: versetzung, label: Versetzung zu anderem Dienstherrn}, {value: sofort, label: Sofortige Sperrung (z. B. Freistellung)}]}
+        - {key: hinweis_sofort, type: info, label: "Sofortige Sperrung: Die IT wird unmittelbar nach Bestätigung durch die Personalabteilung beauftragt – unabhängig vom Datum.", tone: warn, show: {mode: all, rules: [{field: grund, op: eq, values: [sofort]}]}}
+        - {key: vorgesetzter, label: Vorgesetzte/r, type: user, required: true, width: half}
+    - id: daten
+      title: Postfach & Daten
+      icon: "📮"
+      fields:
+        - {key: nachfolge, label: Nachfolge / Vertretung erhält Postfach und Daten, type: user, required: true, width: half}
+        - {key: postfach, label: Postfach, type: radio, required: true, default: shared, width: half, options: [{value: shared, label: In freigegebenes Postfach umwandeln}, {value: weiterleitung, label: Nur weiterleiten}, {value: loeschen, label: Mit dem Konto löschen}]}
+        - {key: abwesenheit, label: Abwesenheitsnotiz, type: textarea, default: "Ich bin nicht mehr bei der Stadtverwaltung tätig. Ihre Nachricht wird weitergeleitet.", show: {mode: any, rules: [{field: postfach, op: eq, values: [shared]}, {field: postfach, op: eq, values: [weiterleitung]}]}}
+        - {key: home_uebergabe, label: Persönliche Ablage (H:) an Nachfolge übergeben, type: checkbox, default: "true", width: half}
+        - {key: fachverfahren, label: Bekannte Fachverfahren der Person, type: catalog, catalog: software, multi: true, help: "Jedes Verfahren wird einzeln gesperrt."}
+    - id: rueckgabe
+      title: Rückgabe
+      icon: "📦"
+      fields:
+        - {key: rueckgabe, label: Zurückzugeben, type: checkboxes, options: [{value: notebook, label: Notebook / PC}, {value: handy, label: Diensthandy}, {value: token, label: Token / Smartcard}, {value: schluessel, label: Schlüssel}, {value: ausweis, label: Dienstausweis / Zutrittskarte}]}
+computed:
+  - {key: sam, label: Benutzername, tpl: "{{.person.sam}}"}
+  - {key: loeschdatum, label: Löschung frühestens, tpl: "{{datum (addDays (num .var.loeschfrist_tage) .letzter_tag)}}"}
+steps:
+  - id: fg_personal
+    title: Bestätigung Personalabteilung
+    kind: freigabe
+    after: []
+    assign: {type: stelle, stelle: personal}
+    due_hours: 24
+    why: Nur die Personalabteilung kann Austritt und Datum verbindlich bestätigen.
+    instructions: "{{.person}} – {{.grund_text}} – letzter Arbeitstag {{datum .letzter_tag}}"
+  - id: info_it
+    title: Vorab-Info an IT und Telefonie
+    kind: info
+    after: [fg_personal]
+    assign: {type: email, email: "it_benutzer;it_telefonie"}
+    mail:
+      subject: "[{{.antrag.nummer}}] Ankündigung Austritt {{.person}} zum {{datum .letzter_tag}}"
+      body: |
+        Zur Planung: {{.person}} ({{.c.sam}}, {{.person.department}}) scheidet zum {{datum .letzter_tag}} aus ({{.grund_text}}).
+        Die Aufgaben zur Sperrung werden am Stichtag automatisch erzeugt.
+  - id: stichtag
+    title: Letzten Arbeitstag abwarten
+    kind: warten
+    after: [fg_personal]
+    when: {mode: all, rules: [{field: grund, op: ne, values: [sofort]}]}
+    wait_field: letzter_tag
+    wait_offset: 0
+  - id: sperren
+    title: Konto sperren & Gruppen entfernen
+    kind: aufgabe
+    after: [stichtag]
+    assign: {type: stelle, stelle: it_benutzer}
+    due_hours: 8
+    why: Zugänge ausgeschiedener Beschäftigter sind ein häufiges Einfallstor – Sperrung am letzten Tag.
+    checklist:
+      - Konto deaktiviert und verschoben (Skript 1)
+      - Gruppenmitgliedschaften dokumentiert und entfernt (Skript 2)
+      - Aktive Sitzungen / Tokens widerrufen (Skript 3)
+    scripts:
+      - title: 1 · Deaktivieren
+        lang: powershell
+        code: |
+          $ErrorActionPreference = 'Stop'
+          $sam = {{ps .c.sam}}
+          Disable-ADAccount $sam
+          Set-ADUser $sam -Description ("Ausgeschieden {{datum .letzter_tag}} ({{.grund_text}}) – {{.antrag.nummer}}") -Manager $null
+          Get-ADUser $sam | Move-ADObject -TargetPath {{ps .var.ou_deaktiviert}}
+          Write-Host "$sam deaktiviert" -ForegroundColor Yellow
+      - title: 2 · Gruppen sichern und entfernen
+        lang: powershell
+        code: |
+          $sam = {{ps .c.sam}}
+          $gruppen = Get-ADPrincipalGroupMembership $sam | Where-Object Name -ne 'Domain Users'
+          $gruppen | Select-Object Name | Export-Csv -NoTypeInformation -Encoding UTF8 (Join-Path {{ps .var.archiv_root}} "$sam-gruppen.csv")
+          $gruppen | ForEach-Object { Remove-ADGroupMember $_ -Members $sam -Confirm:$false; Write-Host "- $($_.Name)" }
+      - title: 3 · Sitzungen widerrufen (Entra ID)
+        lang: powershell
+        code: |
+          Connect-MgGraph -Scopes User.ReadWrite.All
+          $u = Get-MgUser -UserId {{ps .person.mail}}
+          Revoke-MgUserSignInSession -UserId $u.Id
+  - id: sperren_sofort
+    title: Sofortige Sperrung
+    kind: aufgabe
+    after: [fg_personal]
+    when: {mode: all, rules: [{field: grund, op: eq, values: [sofort]}]}
+    assign: {type: stelle, stelle: it_benutzer}
+    due_hours: 1
+    instructions: "**Sofort ausführen** – {{.person}} ({{.c.sam}})."
+    scripts:
+      - title: Sperren + Sitzungen beenden
+        lang: powershell
+        code: |
+          Disable-ADAccount {{ps .c.sam}}
+          Set-ADAccountPassword {{ps .c.sam}} -Reset -NewPassword (ConvertTo-SecureString ([guid]::NewGuid().ToString() + 'aA1!') -AsPlainText -Force)
+          Connect-MgGraph -Scopes User.ReadWrite.All
+          Revoke-MgUserSignInSession -UserId {{ps .person.mail}}
+  - id: postfach
+    title: Postfach übergeben
+    kind: aufgabe
+    after: [sperren, sperren_sofort]
+    when: {mode: all, rules: [{field: postfach, op: ne, values: [loeschen]}]}
+    assign: {type: stelle, stelle: it_mail}
+    instructions: "{{.postfach_text}} – Zugriff/Weiterleitung an {{.nachfolge}}."
+    scripts:
+      - title: Postfach
+        lang: powershell
+        code: |
+          $mb = {{ps .person.mail}}
+          {{- if eq .postfach "shared"}}
+          Set-Mailbox $mb -Type Shared -HiddenFromAddressListsEnabled $true
+          Add-MailboxPermission $mb -User {{ps .nachfolge.mail}} -AccessRights FullAccess -AutoMapping $true
+          {{- end}}
+          Set-Mailbox $mb -ForwardingAddress {{ps .nachfolge.mail}} -DeliverToMailboxAndForward $true
+          {{- if .abwesenheit}}
+          Set-MailboxAutoReplyConfiguration $mb -AutoReplyState Enabled -InternalMessage {{ps .abwesenheit}} -ExternalMessage {{ps .abwesenheit}}
+          {{- end}}
+  - id: daten
+    title: Persönliche Ablage übergeben
+    kind: aufgabe
+    after: [sperren, sperren_sofort]
+    when: {mode: all, rules: [{field: home_uebergabe, op: "true"}]}
+    assign: {type: stelle, stelle: it_benutzer}
+    instructions: "H:-Laufwerk von {{.c.sam}} in die Ablage von {{.nachfolge}} kopieren und archivieren."
+    scripts:
+      - title: Kopieren und archivieren
+        lang: powershell
+        code: |
+          $quelle = Join-Path {{ps .var.home_root}} {{ps .c.sam}}
+          $ziel   = Join-Path (Join-Path {{ps .var.home_root}} {{ps .nachfolge.sam}}) "Übergabe {{.person.name}}"
+          robocopy $quelle $ziel /E /COPY:DAT /R:1 /W:1 /NP /LOG:"$env:TEMP\{{.c.sam}}-uebergabe.log"
+          Move-Item $quelle (Join-Path {{ps .var.archiv_root}} {{ps .c.sam}})
+  - id: fv_sperren
+    title: Fachverfahren sperren
+    kind: aufgabe
+    after: [sperren, sperren_sofort]
+    foreach: fachverfahren
+    when: {mode: all, rules: [{field: item.eigenes_konto, op: eq, values: ["ja"]}]}
+    assign: {type: katalog, field: fachverfahren, attr: betreuung}
+    instructions: "{{.item}}: Konto {{.c.sam}} sperren, offene Vorgänge an {{.nachfolge}} übergeben."
+    checklist:
+      - Konto im Verfahren gesperrt
+      - Offene Vorgänge übertragen
+  - id: hardware
+    title: Hardware zurücknehmen
+    kind: aufgabe
+    after: [fg_personal]
+    when: {mode: any, rules: [{field: rueckgabe, op: contains, values: [notebook]}, {field: rueckgabe, op: contains, values: [handy]}, {field: rueckgabe, op: contains, values: [token]}]}
+    assign: {type: stelle, stelle: it_client}
+    instructions: "Rückgabe am {{datum .letzter_tag}}: {{.rueckgabe_text}}"
+    checklist:
+      - Geräte zurückgenommen und Inventar aktualisiert
+      - Diensthandy aus MDM entfernt / zurückgesetzt
+      - Datenträger sicher gelöscht
+  - id: zutritt
+    title: Schlüssel & Ausweis zurücknehmen
+    kind: aufgabe
+    after: [fg_personal]
+    when: {mode: any, rules: [{field: rueckgabe, op: contains, values: [schluessel]}, {field: rueckgabe, op: contains, values: [ausweis]}]}
+    assign: {type: stelle, stelle: hausverwaltung}
+    instructions: "Zum {{datum .letzter_tag}}: {{.rueckgabe_text}} von {{.person}}."
+    checklist:
+      - Schlüssel zurück (Schlüsselbuch)
+      - Zutrittskarte gesperrt
+      - Namensschilder entfernt
+  - id: telefon
+    title: Rufnummer freigeben
+    kind: aufgabe
+    after: [stichtag, sperren_sofort]
+    assign: {type: stelle, stelle: it_telefonie}
+    instructions: "Nebenstelle {{default \"(siehe Telefonbuch)\" .person.phone}} von {{.person}} umleiten auf {{.nachfolge}} bzw. freigeben."
+  - id: frist
+    title: Löschfrist abwarten
+    kind: warten
+    after: [postfach, daten, fv_sperren]
+    wait_field: letzter_tag
+    wait_offset: 90
+  - id: fg_loeschen
+    title: Endgültige Löschung bestätigen
+    kind: freigabe
+    after: [frist]
+    assign: {type: feld, field: vorgesetzter}
+    why: Vor der Löschung wird geprüft, ob noch Daten aus Postfach oder Ablage benötigt werden.
+    instructions: "Das Konto {{.c.sam}} und {{if eq .postfach \"loeschen\"}}das Postfach{{else}}das übergebene Postfach{{end}} werden nach Freigabe gelöscht."
+  - id: loeschen
+    title: Konto und Postfach löschen
+    kind: aufgabe
+    after: [fg_loeschen]
+    assign: {type: stelle, stelle: it_benutzer}
+    scripts:
+      - title: Löschen
+        lang: powershell
+        code: |
+          # Löschfrist bis {{.c.loeschdatum}} abgelaufen, freigegeben von {{.out.fg_loeschen.von}}
+          Remove-ADUser {{ps .c.sam}} -Confirm:$true
+    checklist:
+      - Konto gelöscht
+      - Postfach/Lizenz entfernt

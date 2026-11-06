@@ -1,5 +1,5 @@
 .git
-data
+/data
 *.db*
-config.yaml
+/config.yaml
 tests/e2e/node_modules

@@ -1,0 +1,80 @@
+key: hardware_glpi
+name: Gerät anfordern (über GLPI)
+description: Notebook, Monitor oder Smartphone anfordern. Nach der Freigabe entsteht je Gerät ein GLPI-Ticket für den IT-Arbeitsplatz; die Inventarnummer kommt aus GLPI zurück.
+category: Zugänge & Geräte
+icon: "💻"
+color: "#3a4f85"
+prefix: GER
+title_tpl: "Geräte für {{.person}}: {{count .geraete}}"
+form:
+  sections:
+    - id: person
+      title: Für wen?
+      icon: "👤"
+      fields:
+        - {key: person, label: Person, type: user, required: true, width: half}
+        - {key: vorgesetzter, label: Vorgesetzte/r, type: user, required: true, width: half}
+        - {key: raum, label: Raum, type: catalog, catalog: raeume, width: half}
+        - {key: bis, label: Benötigt bis, type: date, required: true, width: half}
+    - id: geraete
+      title: Geräte
+      icon: "💻"
+      fields:
+        - key: geraete
+          label: Geräte
+          type: group
+          required: true
+          min: 1
+          add_label: Gerät hinzufügen
+          item_label: Gerät
+          fields:
+            - {key: art, label: Gerät, type: select, required: true, width: half, options: [{value: notebook, label: Notebook}, {value: monitor, label: Monitor}, {value: smartphone, label: Smartphone}, {value: drucker, label: Arbeitsplatzdrucker}]}
+            - {key: hinweis, label: Hinweis, type: text, width: half, placeholder: "z. B. 2 Monitore, Dienst-Handy mit eSIM"}
+steps:
+  - id: fg_vorgesetzt
+    title: Freigabe Vorgesetzte/r
+    kind: freigabe
+    after: []
+    assign: {type: feld, field: vorgesetzter}
+    why: Bedarf und Kostenübernahme der Organisationseinheit.
+  - id: ticket
+    title: Ticket je Gerät
+    kind: glpi
+    after: [fg_vorgesetzt]
+    foreach: geraete
+    assign: {type: stelle, stelle: it_client}
+    outputs:
+      - {key: inventar, label: Inventarnummer, type: text, required: true}
+    glpi:
+      type: ticket
+      ticket_type: "2"
+      name: "{{.item.art_text}} für {{.person.name}} ({{.antrag.nummer}})"
+      content: |
+        Bitte {{.item.art_text}} für {{.person.name}} ({{.person.department}}) bereitstellen.
+        {{if .item.hinweis}}Hinweis: {{.item.hinweis}}
+        {{end}}Raum: {{default "–" .raum.label}} · benötigt bis {{datum .bis}}
+        Freigegeben von {{.out.fg_vorgesetzt.von}}.
+
+        Nach Ausgabe bitte die Inventarnummer zurückmelden: {{.glpi.rueckmeldung}}
+        (oder in der Lösung „Inventarnummer: …“ angeben)
+      urgency: "3"
+      category: IT > Hardware
+      request_type: Antragswerk
+      due_date: "{{.bis}}"
+      team:
+        - {role: assigned, type: Group, value: IT-Arbeitsplatz}
+        - {role: observer, type: User, value: "{{.antrag.antragsteller}}"}
+  - id: info
+    title: Info an Antragsteller/in
+    kind: info
+    after: [ticket]
+    assign: {type: antragsteller}
+    mail:
+      subject: "Geräte für {{.person.name}} bereit ({{.antrag.nummer}})"
+      body: |
+        Guten Tag,
+
+        die angeforderten Geräte sind ausgegeben:
+        {{range .out.ticket.liste}}
+        - {{.eintrag}}: Inventarnummer {{.inventar}} (GLPI #{{.glpi_id}})
+        {{end}}

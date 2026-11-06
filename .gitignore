@@ -1,7 +1,9 @@
-antragswerk
+# nur im Hauptverzeichnis (sonst würden cmd/antragswerk/ und internal/seed/data/ ausgeschlossen)
+/antragswerk
+/antragswerk.exe
+/config.yaml
+/data/
+/dist/
 *.db
 *.db-*
-config.yaml
-data/
 node_modules/
-dist/

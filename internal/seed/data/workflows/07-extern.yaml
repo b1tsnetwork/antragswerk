@@ -1,0 +1,107 @@
+key: extern
+name: Zugang für Externe (Dienstleister, Praktikum)
+description: Befristetes Konto für Externe mit Freigabe durch die interne Verantwortung, ISB bei VPN und Datenschutz bei personenbezogenen Daten – automatische Sperrung zum Enddatum.
+category: Benutzer & Konten
+icon: "🪪"
+color: "#be185d"
+prefix: EXT
+title_tpl: "Externer Zugang {{.vorname}} {{.nachname}} ({{.firma}}) bis {{datum .bis}}"
+form:
+  sections:
+    - id: person
+      title: Externe Person
+      icon: "🪪"
+      fields:
+        - {key: vorname, label: Vorname, type: text, required: true, width: half}
+        - {key: nachname, label: Nachname, type: text, required: true, width: half}
+        - {key: firma, label: Firma / Hochschule, type: text, required: true, width: half}
+        - {key: mail_extern, label: E-Mail (extern), type: email, width: half}
+        - {key: von, label: Zugang ab, type: date, required: true, width: third}
+        - {key: bis, label: Zugang bis, type: date, required: true, width: third, help: "max. 12 Monate"}
+        - {key: betreuer, label: Interne Verantwortung, type: user, required: true, width: third}
+    - id: zugang
+      title: Zugang
+      icon: "🔐"
+      fields:
+        - {key: zweck, label: Zweck / Auftrag, type: textarea, required: true}
+        - {key: zugangsart, label: Zugangsart, type: radio, required: true, default: vorort, options: [{value: vorort, label: Nur vor Ort}, {value: vpn, label: Fernzugriff (VPN)}, {value: beides, label: Beides}]}
+        - {key: personenbezogen, label: Zugriff auf personenbezogene Daten, type: checkbox, width: half}
+        - {key: av_vertrag, label: Vertrag zur Auftragsverarbeitung liegt vor, type: checkbox, width: half, show: {mode: all, rules: [{field: personenbezogen, op: "true"}]}}
+        - key: systeme
+          label: Benötigte Systeme
+          type: group
+          add_label: System hinzufügen
+          item_label: System
+          fields:
+            - {key: system, label: System / Server / Verfahren, type: text, required: true, width: half}
+            - {key: rechte, label: Rechte, type: select, required: true, width: half, options: [{value: lesen, label: Lesen}, {value: benutzer, label: Benutzer}, {value: admin, label: Administrativ}]}
+computed:
+  - {key: sam, label: Benutzername, tpl: "{{default (printf \"ext.%s\" (sam .vorname .nachname)) .out.konto.sam}}"}
+  - {key: anzeigename, label: Anzeigename, tpl: "{{.nachname}}, {{.vorname}} (extern – {{.firma}})"}
+steps:
+  - id: fg_betreuer
+    title: Bestätigung interne Verantwortung
+    kind: freigabe
+    after: []
+    assign: {type: feld, field: betreuer}
+    why: Externe Zugänge brauchen eine verantwortliche Person in der Verwaltung.
+  - id: fg_isb
+    title: Freigabe Informationssicherheit
+    kind: freigabe
+    after: [fg_betreuer]
+    when: {mode: any, rules: [{field: zugangsart, op: in, values: [vpn, beides]}, {field: systeme, op: contains, values: [admin]}]}
+    assign: {type: stelle, stelle: isb}
+    why: Fernzugriffe und administrative Rechte Externer erfordern eine Risikobewertung (BSI IT-Grundschutz OPS.2.3, ORP.4).
+    instructions: "{{.zugangsart_text}} · Systeme: {{range $i, $s := .systeme}}{{if $i}}, {{end}}{{$s.system}} ({{$s.rechte_text}}){{end}}"
+  - id: fg_dsb
+    title: Prüfung Datenschutz
+    kind: freigabe
+    after: [fg_betreuer]
+    when: {mode: all, rules: [{field: personenbezogen, op: "true"}]}
+    assign: {type: stelle, stelle: datenschutz}
+    why: Zugriff Externer auf personenbezogene Daten nur mit Vertrag zur Auftragsverarbeitung (Art. 28 DSGVO).
+    instructions: "AV-Vertrag laut Antrag: {{ja .av_vertrag}}"
+  - id: konto
+    title: Befristetes Konto anlegen
+    kind: aufgabe
+    after: [fg_isb, fg_dsb]
+    assign: {type: stelle, stelle: it_benutzer}
+    outputs:
+      - {key: sam, label: Benutzername, type: text, required: true, default: "{{.c.sam}}"}
+    scripts:
+      - title: Konto mit Ablaufdatum
+        lang: powershell
+        code: |
+          $sam = {{ps .c.sam}}
+          $pw = Read-Host -AsSecureString "Startkennwort"
+          New-ADUser -Name {{ps .c.anzeigename}} -DisplayName {{ps .c.anzeigename}} -GivenName {{ps .vorname}} -Surname {{ps .nachname}} `
+            -SamAccountName $sam -UserPrincipalName ($sam + '@{{.var.upn_suffix}}') -Path {{ps .var.ou_extern}} `
+            -Company {{ps .firma}} -Manager {{ps .betreuer.sam}} -Description {{ps (printf "Extern bis %s · %s" (datum .bis) .antrag.nummer)}} `
+            -AccountExpirationDate (Get-Date {{psdate (addDays 1 .bis)}}) -AccountPassword $pw -ChangePasswordAtLogon $true -Enabled $true
+          {{- if ne .zugangsart "vorort"}}
+          Add-ADGroupMember {{ps .var.vpn_gruppe}} -Members $sam
+          {{- end}}
+    checklist:
+      - Konto mit Ablaufdatum angelegt
+      - "Zugriffe gesetzt: {{range $i, $s := .systeme}}{{if $i}}, {{end}}{{$s.system}}{{end}}"
+      - Verpflichtungserklärung unterschrieben
+  - id: ende
+    title: Enddatum abwarten
+    kind: warten
+    after: [konto]
+    wait_field: bis
+    wait_offset: 1
+  - id: sperren
+    title: Externen Zugang entfernen
+    kind: aufgabe
+    after: [ende]
+    assign: {type: stelle, stelle: it_benutzer}
+    scripts:
+      - title: Deaktivieren
+        lang: powershell
+        code: |
+          Disable-ADAccount {{ps .c.sam}}
+          Get-ADPrincipalGroupMembership {{ps .c.sam}} | Where-Object Name -ne 'Domain Users' | ForEach-Object { Remove-ADGroupMember $_ -Members {{ps .c.sam}} -Confirm:$false }
+    checklist:
+      - Konto deaktiviert, Gruppen entfernt
+      - VPN-Zertifikat / Token zurückgezogen

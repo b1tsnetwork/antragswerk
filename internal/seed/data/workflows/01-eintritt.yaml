@@ -1,0 +1,391 @@
+key: eintritt
+name: Neue Mitarbeiterin / neuer Mitarbeiter
+description: Eintritt mit AD-Konto, Postfach, Software, Verzeichnissen, Arbeitsplatz, Telefon, Raum und Zutritt – inkl. Freigaben durch Vorgesetzte, Verfahrensverantwortliche und Dateneigentümer.
+category: Benutzer & Konten
+icon: "👤"
+color: "#1f5fbf"
+prefix: EIN
+title_tpl: "Eintritt {{.vorname}} {{.nachname}} – {{.abteilung}} ab {{datum .eintritt}}"
+intro: Bitte möglichst 3 Wochen vor dem ersten Arbeitstag stellen. Pflichtfelder sind mit * markiert. Software und Verzeichnisse können Sie beliebig oft hinzufügen – jede Zeile wird einzeln freigegeben.
+form:
+  sections:
+    - id: person
+      title: Person
+      icon: "👤"
+      description: Stammdaten aus dem Arbeitsvertrag.
+      fields:
+        - {key: anrede, label: Anrede, type: select, width: third, options: [{value: frau, label: Frau}, {value: herr, label: Herr}, {value: divers, label: Divers}, {value: keine, label: keine Angabe}]}
+        - {key: titel, label: Akad. Titel, type: text, width: third, placeholder: "Dr."}
+        - {key: personalnummer, label: Personalnummer, type: text, width: third, pattern: '^\d{5,8}$', pattern_msg: "5–8 Ziffern", placeholder: "z. B. 104233"}
+        - {key: vorname, label: Vorname, type: text, required: true, width: half}
+        - {key: nachname, label: Nachname, type: text, required: true, width: half}
+        - {key: eintritt, label: Erster Arbeitstag, type: date, required: true, width: third}
+        - {key: beschaeftigung, label: Beschäftigung, type: select, required: true, width: third, default: tb, options: [{value: tb, label: Tarifbeschäftigte/r}, {value: beamt, label: Beamtin / Beamter}, {value: azubi, label: Auszubildende/r}, {value: praktikum, label: Praktikum}, {value: aushilfe, label: Aushilfe}]}
+        - {key: befristet, label: Befristet, type: checkbox, width: third, help: "Konto läuft automatisch ab"}
+        - key: befristet_bis
+          label: Befristet bis
+          type: date
+          required: true
+          width: third
+          show: {mode: all, rules: [{field: befristet, op: "true"}]}
+    - id: org
+      title: Organisation & Arbeitsplatz
+      icon: "🏛"
+      fields:
+        - {key: abteilung, label: Organisationseinheit, type: catalog, catalog: abteilungen, required: true, width: half}
+        - {key: funktion, label: Funktion / Stellenbezeichnung, type: text, required: true, width: half, placeholder: "z. B. Sachbearbeitung Meldewesen"}
+        - {key: vorgesetzter, label: Vorgesetzte/r, type: user, required: true, width: half, help: "Gibt den Antrag frei und erhält die Zugangsdaten-Info."}
+        - {key: raum, label: Raum, type: catalog, catalog: raeume, width: half}
+        - {key: telefon, label: Telefon, type: radio, required: true, default: neu, options: [{value: neu, label: Neue Durchwahl}, {value: vorhanden, label: Vorhandene Nummer übernehmen}, {value: keins, label: Kein Telefon}]}
+        - key: telefon_vorhanden
+          label: Zu übernehmende Rufnummer
+          type: phone
+          required: true
+          width: half
+          show: {mode: all, rules: [{field: telefon, op: eq, values: [vorhanden]}]}
+    - id: konto
+      title: Konto & Kommunikation
+      icon: "🔑"
+      fields:
+        - {key: postfach, label: Persönliches Postfach, type: checkbox, default: "true", width: half, help: "Mailadresse nach Schema vorname.nachname"}
+        - {key: postfaecher, label: Zugriff auf Funktionspostfächer, type: catalog, catalog: postfaecher, multi: true, width: half}
+        - {key: referenz, label: "Berechtigungen wie … (optional)", type: user, width: half, help: "Referenzperson mit gleicher Tätigkeit – die IT übernimmt nur bewusst ausgewählte Gruppen."}
+        - {key: homeoffice, label: Mobiles Arbeiten (VPN), type: checkbox, width: half}
+        - {key: hinweis_vpn, type: info, label: "Für VPN ist eine unterschriebene Nutzungsvereinbarung „Mobiles Arbeiten“ erforderlich (Personalabteilung).", tone: warn, show: {mode: all, rules: [{field: homeoffice, op: "true"}]}}
+    - id: ausstattung
+      title: Ausstattung
+      icon: "💻"
+      fields:
+        - {key: geraet, label: Arbeitsplatzgerät, type: select, required: true, width: half, default: notebook, options: [{value: notebook, label: Notebook mit Dockingstation}, {value: pc, label: Stand-PC}, {value: thin, label: Thin-Client}, {value: vorhanden, label: Vorhandenes Gerät nutzen}]}
+        - {key: monitore, label: Anzahl Monitore, type: number, width: third, default: "2"}
+        - {key: zubehoer, label: Zubehör, type: checkboxes, options: [{value: headset, label: Headset}, {value: webcam, label: Webcam}, {value: kartenleser, label: Kartenleser (eID/Signatur)}, {value: scanner, label: Arbeitsplatzscanner}]}
+        - {key: diensthandy, label: Diensthandy, type: checkbox, width: half}
+        - key: diensthandy_grund
+          label: Begründung Diensthandy
+          type: textarea
+          required: true
+          show: {mode: all, rules: [{field: diensthandy, op: "true"}]}
+    - id: software
+      title: Programme & Fachverfahren
+      icon: "🧩"
+      description: Standardsoftware ist automatisch enthalten. Jedes Fachverfahren wird von der jeweiligen Verfahrensverantwortung freigegeben.
+      fields:
+        - key: programme
+          label: Programme
+          type: group
+          add_label: Programm hinzufügen
+          item_label: Programm
+          max: 20
+          fields:
+            - {key: software, label: Programm / Fachverfahren, type: catalog, catalog: software, required: true, width: half}
+            - {key: rolle, label: Rolle / Rechte, type: text, width: half, placeholder: "z. B. Sachbearbeitung"}
+            - {key: begruendung, label: Begründung, type: textarea, help: "Warum wird der Zugang für die Tätigkeit benötigt?"}
+    - id: daten
+      title: Verzeichnisse
+      icon: "📁"
+      description: Zugriffe außerhalb des Abteilungslaufwerks. Der Dateneigentümer gibt jede Zeile frei.
+      fields:
+        - key: verzeichnisse
+          label: Verzeichnisse
+          type: group
+          add_label: Verzeichnis hinzufügen
+          item_label: Verzeichnis
+          fields:
+            - {key: verzeichnis, label: Verzeichnis, type: catalog, catalog: verzeichnisse, required: true, width: half}
+            - {key: zugriff, label: Zugriff, type: radio, required: true, width: half, default: lesen, options: [{value: lesen, label: Lesen}, {value: aendern, label: Ändern}]}
+    - id: sonstiges
+      title: Hinweise
+      icon: "💬"
+      fields:
+        - {key: bemerkung, label: Bemerkungen an die IT, type: textarea}
+computed:
+  - {key: sam, label: Benutzername, tpl: "{{default (sam .vorname .nachname) .out.ad_konto.sam}}"}
+  - {key: upn, label: Anmeldename (UPN), tpl: "{{.c.sam}}@{{.var.upn_suffix}}"}
+  - {key: mail, label: Mailadresse, tpl: "{{default (printf \"%s.%s@%s\" (lower (ascii .vorname)) (lower (ascii .nachname)) .var.mail_domain) .out.postfach.adresse}}"}
+  - {key: anzeigename, label: Anzeigename, tpl: "{{.nachname}}, {{.vorname}}{{if .titel}}, {{.titel}}{{end}}"}
+  - {key: ou, label: Ziel-OU, tpl: "{{default .var.ou_benutzer .abteilung.ou}}"}
+  - {key: durchwahl, label: Durchwahl, tpl: "{{if .telefon_vorhanden}}{{.telefon_vorhanden}}{{else}}{{.out.telefonie.durchwahl}}{{end}}"}
+steps:
+  - id: fg_vorgesetzt
+    title: Freigabe durch Vorgesetzte/n
+    kind: freigabe
+    after: []
+    assign: {type: feld, field: vorgesetzter}
+    due_hours: 48
+    why: Die Führungskraft bestätigt Bedarf, Funktion und beantragte Zugänge (Need-to-know, Minimalprinzip).
+    instructions: Bitte prüfen Sie insbesondere Software, Verzeichnisse und Funktionspostfächer. Nicht benötigte Zugänge bitte per Rückfrage streichen lassen.
+  - id: fg_verfahren
+    title: Freigabe Verfahrensverantwortung
+    kind: freigabe
+    after: [fg_vorgesetzt]
+    foreach: programme
+    when: {mode: all, rules: [{field: item.software.freigabe, op: eq, values: ["ja"]}]}
+    assign: {type: katalog, field: software, attr: verantwortlich}
+    due_hours: 72
+    why: Zugriff auf Fachverfahren nur nach Freigabe der Verfahrensverantwortlichen (Berechtigungskonzept, Art. 32 DSGVO).
+    instructions: |
+      Beantragt: {{.item.software}}{{if .item.rolle}} – Rolle „{{.item.rolle}}“{{end}}
+      Begründung: {{default "—" .item.begruendung}}
+      Person: {{.vorname}} {{.nachname}}, {{.funktion}} ({{.abteilung}})
+  - id: fg_daten
+    title: Freigabe Dateneigentümer
+    kind: freigabe
+    after: [fg_vorgesetzt]
+    foreach: verzeichnisse
+    assign: {type: katalog, field: verzeichnis, attr: eigentuemer}
+    due_hours: 72
+    why: Dateneigentümer entscheiden über Zugriffe auf ihre Ablagen.
+    instructions: |
+      {{.item.verzeichnis}} ({{.item.verzeichnis.pfad}}) – Zugriff: {{.item.zugriff_text}}
+      für {{.vorname}} {{.nachname}}, {{.funktion}} ({{.abteilung}})
+  - id: arbeitsplatz
+    title: Arbeitsplatz vorbereiten
+    kind: aufgabe
+    after: [fg_vorgesetzt]
+    assign: {type: stelle, stelle: it_client}
+    due_hours: 120
+    why: Gerät und Zubehör müssen zum ersten Arbeitstag bereitstehen.
+    instructions: |
+      Gerät: {{.geraet_text}} · Monitore: {{default "1" .monitore}}{{if .zubehoer}} · Zubehör: {{.zubehoer_text}}{{end}}
+      Raum: {{default "noch offen" .raum}} · Erster Arbeitstag: {{datum .eintritt}}
+    checklist:
+      - "Gerät aus dem Lager reservieren / bestellen ({{.geraet_text}})"
+      - "Gerät inventarisieren und der Person zuordnen"
+      - "Zubehör: {{default \"keins\" .zubehoer_text}}"
+      - "Aufbau am Arbeitsplatz {{default \"(Raum folgt)\" .raum}} einplanen"
+    outputs:
+      - {key: inventar, label: Inventarnummer, type: text}
+  - id: telefonie
+    title: Telefon einrichten
+    kind: aufgabe
+    after: [fg_vorgesetzt]
+    when: {mode: all, rules: [{field: telefon, op: ne, values: [keins]}]}
+    assign: {type: stelle, stelle: it_telefonie}
+    due_hours: 120
+    instructions: "{{if eq .telefon \"vorhanden\"}}Vorhandene Nummer {{.telefon_vorhanden}} auf {{.vorname}} {{.nachname}} umschreiben.{{else}}Neue Durchwahl vergeben und Endgerät/Softphone einrichten.{{end}} Raum: {{default \"–\" .raum}}"
+    checklist:
+      - Durchwahl vergeben / umschreiben
+      - Endgerät oder Softphone (Headset) bereitstellen
+      - Eintrag im Telefonbuch
+    outputs:
+      - {key: durchwahl, label: Durchwahl, type: text, required: true, default: "{{.telefon_vorhanden}}"}
+  - id: raum_zutritt
+    title: Raum, Schlüssel & Zutritt
+    kind: aufgabe
+    after: [fg_vorgesetzt]
+    when: {mode: all, rules: [{field: raum, op: set}]}
+    assign: {type: stelle, stelle: hausverwaltung}
+    due_hours: 120
+    instructions: "Raum {{.raum}} ({{.raum.gebaeude}}, Etage {{.raum.etage}}) für {{.vorname}} {{.nachname}} ab {{datum .eintritt}}."
+    checklist:
+      - "Schlüssel Schließgruppe {{.raum.schliessgruppe}} ausgeben"
+      - "Zutrittskarte mit Profil {{.raum.zutritt}} erstellen{{if .befristet}} (gültig bis {{datum .befristet_bis}}){{end}}"
+      - Türschild / Namensschild bestellen
+    outputs:
+      - {key: karte, label: Kartennummer, type: text}
+  - id: ad_konto
+    title: AD-Konto & Gruppen anlegen
+    kind: aufgabe
+    after: [fg_verfahren, fg_daten]
+    assign: {type: stelle, stelle: it_benutzer}
+    due_hours: 48
+    why: Grundlage für alle weiteren Zugänge.
+    instructions: |
+      Benutzername nach Schema: **{{.c.sam}}** ({{.c.upn}}) – bei Namensdopplung bitte abweichenden Namen unten eintragen, alle weiteren Skripte übernehmen ihn automatisch.
+      Ziel-OU: {{.c.ou}}{{if .befristet}} · Konto läuft am {{datum (addDays 1 .befristet_bis)}} ab{{end}}
+    checklist:
+      - Benutzername auf Eindeutigkeit geprüft
+      - Konto angelegt (Skript 1)
+      - Standard-, Abteilungs-, Software- und Verzeichnisgruppen gesetzt (Skripte 2–3)
+      - Home-Verzeichnis angelegt (Skript 4)
+      - Startkennwort im verschlossenen Umschlag an Vorgesetzte/n
+    outputs:
+      - {key: sam, label: Vergebener Benutzername, type: text, required: true, default: "{{.c.sam}}"}
+    scripts:
+      - title: 1 · AD-Konto anlegen
+        lang: powershell
+        code: |
+          # {{.antrag.nummer}} · Eintritt {{.vorname}} {{.nachname}}
+          $ErrorActionPreference = 'Stop'
+          Import-Module ActiveDirectory
+          $sam = {{ps .c.sam}}
+          if (Get-ADUser -Filter "sAMAccountName -eq '$sam'") { throw "Benutzername $sam ist bereits vergeben – im Schritt anderen Namen eintragen." }
+          $pw = Read-Host -AsSecureString "Startkennwort für $sam"
+          $p = @{
+              Name                  = {{ps .c.anzeigename}}
+              DisplayName           = {{ps .c.anzeigename}}
+              GivenName             = {{ps .vorname}}
+              Surname               = {{ps .nachname}}
+              SamAccountName        = $sam
+              UserPrincipalName     = {{ps .c.upn}}
+              Path                  = {{ps .c.ou}}
+              Department            = {{ps .abteilung.label}}
+              Title                 = {{ps .funktion}}
+              Company               = {{ps .var.organisation}}
+              Manager               = {{ps .vorgesetzter.sam}}
+              Description           = {{ps (printf "%s · %s" .funktion .antrag.nummer)}}
+              AccountPassword       = $pw
+              ChangePasswordAtLogon = $true
+              Enabled               = $true
+          }
+          {{- if .personalnummer}}
+          $p.EmployeeID = {{ps .personalnummer}}
+          {{- end}}
+          {{- if .raum.key}}
+          $p.Office = {{ps .raum.label}}
+          {{- end}}
+          {{- if .befristet}}
+          $p.AccountExpirationDate = Get-Date {{psdate (addDays 1 .befristet_bis)}}
+          {{- end}}
+          New-ADUser @p
+          Write-Host "Konto $sam angelegt in {{.c.ou}}" -ForegroundColor Green
+      - title: 2 · Gruppen (Standard, Abteilung, Software, Verzeichnisse)
+        lang: powershell
+        code: |
+          $sam = {{ps .c.sam}}
+          # Standard + {{.abteilung}}
+          $gruppen = {{psarr (concat (split .var.standard_gruppen) (split .abteilung.gruppen))}}
+          {{- if .programme}}
+          # Programme: {{join ", " (pluck .programme "software.label")}}
+          $gruppen += {{psarr (pluck .programme "software.ad_gruppen")}}
+          {{- end}}
+          {{- range .verzeichnisse}}
+          $gruppen += {{if eq .zugriff "aendern"}}{{ps .verzeichnis.gruppe_rw}}{{else}}{{ps .verzeichnis.gruppe_ro}}{{end}}   # {{.verzeichnis.pfad}} ({{.zugriff_text}})
+          {{- end}}
+          {{- range .postfaecher}}
+          $gruppen += {{ps .gruppe}}   # Postfach {{.adresse}}
+          {{- end}}
+          {{- if .homeoffice}}
+          $gruppen += {{ps .var.vpn_gruppe}}
+          {{- end}}
+          foreach ($g in ($gruppen | Select-Object -Unique)) {
+              Add-ADGroupMember -Identity $g -Members $sam
+              Write-Host "+ $g" -ForegroundColor Green
+          }
+      - title: 3 · Gruppen der Referenzperson prüfen
+        lang: powershell
+        code: |
+          {{- if .referenz.sam}}
+          # Referenz: {{.referenz.name}} ({{.referenz.sam}}) – nur bewusst ausgewählte Gruppen übernehmen!
+          Get-ADUser {{ps .referenz.sam}} -Properties MemberOf |
+            Select-Object -ExpandProperty MemberOf | Get-ADGroup | Sort-Object Name |
+            Out-GridView -PassThru -Title 'Gruppen für {{.c.sam}} übernehmen' |
+            ForEach-Object { Add-ADGroupMember $_ -Members {{ps .c.sam}}; Write-Host "+ $($_.Name)" }
+          {{- else}}
+          # Keine Referenzperson angegeben – nichts zu tun.
+          {{- end}}
+      - title: 4 · Home-Verzeichnis
+        lang: powershell
+        code: |
+          $sam  = {{ps .c.sam}}
+          $home = Join-Path {{ps .var.home_root}} $sam
+          New-Item -ItemType Directory -Path $home -Force | Out-Null
+          $acl = Get-Acl $home
+          $rule = New-Object System.Security.AccessControl.FileSystemAccessRule("{{.var.domain_netbios}}\$sam", 'Modify', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
+          $acl.AddAccessRule($rule); Set-Acl $home $acl
+          Set-ADUser $sam -HomeDirectory $home -HomeDrive 'H:'
+  - id: postfach
+    title: Postfach anlegen
+    kind: aufgabe
+    after: [ad_konto]
+    when: {mode: all, rules: [{field: postfach, op: "true"}]}
+    assign: {type: stelle, stelle: it_mail}
+    due_hours: 24
+    instructions: "Postfach für {{.c.sam}} mit Adresse {{.c.mail}}{{if .postfaecher}}; Zugriff auf {{join \", \" (pluck .postfaecher \"adresse\")}} (über Gruppen bereits gesetzt){{end}}."
+    checklist:
+      - Postfach angelegt
+      - Adressbuch-/Signaturdaten geprüft
+    outputs:
+      - {key: adresse, label: Primäre Mailadresse, type: email, required: true, default: "{{.c.mail}}"}
+    scripts:
+      - title: Exchange Hybrid / M365
+        lang: powershell
+        code: |
+          Enable-RemoteMailbox -Identity {{ps .c.sam}} -RemoteRoutingAddress {{ps (printf "%s@%s" .c.sam .var.m365_routing)}} -PrimarySmtpAddress {{ps .c.mail}}
+      - title: Exchange lokal
+        lang: powershell
+        code: |
+          Enable-Mailbox -Identity {{ps .c.sam}} -Database {{ps .var.exchange_db}} -PrimarySmtpAddress {{ps .c.mail}}
+          Set-Mailbox {{ps .c.sam}} -Office {{ps .raum.label}} -CustomAttribute1 {{ps .abteilung.kostenstelle}}
+  - id: fv_konto
+    title: Konto im Fachverfahren einrichten
+    kind: aufgabe
+    after: [ad_konto]
+    foreach: programme
+    when: {mode: all, rules: [{field: item.software.eigenes_konto, op: eq, values: ["ja"]}]}
+    assign: {type: katalog, field: software, attr: betreuung}
+    due_hours: 72
+    instructions: |
+      {{.item.software}}: Benutzer {{.c.sam}} ({{.vorname}} {{.nachname}}, {{.abteilung}}) anlegen.
+      Rolle: {{default "Standard" .item.rolle}} · Mögliche Rollen: {{default "–" .item.software.rollen}}
+    checklist:
+      - Benutzer im Verfahren angelegt bzw. per SSO verknüpft
+      - Rolle/Rechte nach Freigabe gesetzt
+      - Schulungsbedarf geklärt
+  - id: vpn
+    title: VPN / Mobiles Arbeiten
+    kind: aufgabe
+    after: [ad_konto]
+    when: {mode: all, rules: [{field: homeoffice, op: "true"}]}
+    assign: {type: stelle, stelle: it_benutzer}
+    instructions: VPN-Profil und MFA-Registrierung vorbereiten. Nutzungsvereinbarung muss vorliegen.
+    checklist:
+      - Nutzungsvereinbarung liegt vor
+      - "Mitglied in {{.var.vpn_gruppe}} (Skript 2 im AD-Schritt)"
+      - MFA-Registrierung beim ersten Login vorbereitet
+  - id: diensthandy
+    title: Diensthandy bereitstellen
+    kind: aufgabe
+    after: [ad_konto]
+    when: {mode: all, rules: [{field: diensthandy, op: "true"}]}
+    assign: {type: stelle, stelle: it_client}
+    instructions: "Begründung: {{.diensthandy_grund}}"
+    checklist:
+      - Gerät + SIM bereitstellen
+      - "Im MDM registrieren ({{.var.mdm_gruppe}})"
+    scripts:
+      - title: MDM-Gruppe
+        lang: powershell
+        code: |
+          Add-ADGroupMember -Identity {{ps .var.mdm_gruppe}} -Members {{ps .c.sam}}
+    outputs:
+      - {key: rufnummer, label: Mobilnummer, type: phone}
+  - id: uebergabe
+    title: Übergabe am ersten Arbeitstag
+    kind: aufgabe
+    after: [postfach, fv_konto, vpn, diensthandy, arbeitsplatz, telefonie, raum_zutritt]
+    assign: {type: stelle, stelle: it_client}
+    instructions: "Erster Arbeitstag: {{datum .eintritt}} · Raum {{default \"–\" .raum}} · Benutzer {{.c.sam}}{{if .c.durchwahl}} · Durchwahl {{.c.durchwahl}}{{end}}"
+    checklist:
+      - Gerät aufgebaut und Anmeldung getestet
+      - Erstanmeldung / Kennwortwechsel begleitet, MFA eingerichtet
+      - IT-Sicherheitsunterweisung ausgehändigt
+  - id: info_vg
+    title: Zugänge bereit – Info an Vorgesetzte/n
+    kind: info
+    after: [uebergabe]
+    assign: {type: feld, field: vorgesetzter}
+    mail:
+      subject: "[{{.antrag.nummer}}] Zugänge für {{.vorname}} {{.nachname}} sind eingerichtet"
+      body: |
+        Guten Tag {{.vorgesetzter.name}},
+
+        für {{.vorname}} {{.nachname}} (ab {{datum .eintritt}}) ist alles vorbereitet:
+
+          Benutzername:   {{.c.sam}}
+          Mailadresse:    {{if .postfach}}{{.c.mail}}{{else}}– (kein Postfach){{end}}
+          Telefon:        {{default "–" .c.durchwahl}}
+          Raum:           {{default "–" .raum}}
+          Programme:      {{default "nur Standard" (join ", " (pluck .programme "software.label"))}}
+
+        Das Startkennwort erhalten Sie im verschlossenen Umschlag von der IT.
+
+        Vorgang: {{.antrag.link}}
+done:
+  subject: "[{{.antrag.nummer}}] Erledigt: Eintritt {{.vorname}} {{.nachname}}"
+  body: |
+    Guten Tag,
+
+    der Eintritt von {{.vorname}} {{.nachname}} ist vollständig vorbereitet (Benutzer {{.c.sam}}{{if .postfach}}, {{.c.mail}}{{end}}).
+
+    Verlauf und Nachweise: {{.link}}

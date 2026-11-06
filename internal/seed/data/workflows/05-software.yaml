@@ -1,0 +1,111 @@
+key: software
+name: Programme & Fachverfahren beantragen
+description: Zusätzliche Software oder Fachverfahren für eine Person – Freigabe je Programm durch die Verfahrensverantwortung, danach Gruppen, Installation und Einrichtung im Verfahren parallel.
+category: Berechtigungen
+icon: "🧩"
+color: "#b45309"
+prefix: SW
+title_tpl: "Software für {{.person}}: {{join \", \" (pluck .programme \"software.label\")}}"
+form:
+  sections:
+    - id: person
+      title: Für wen?
+      icon: "👤"
+      fields:
+        - {key: person, label: Person, type: user, required: true, width: half}
+        - {key: vorgesetzter, label: Vorgesetzte/r, type: user, required: true, width: half, help: "gibt den Bedarf frei"}
+    - id: programme
+      title: Programme
+      icon: "🧩"
+      description: Für jedes Programm eine Zeile – Rolle und Begründung helfen der Verfahrensverantwortung bei der Entscheidung.
+      fields:
+        - key: programme
+          label: Programme
+          type: group
+          required: true
+          add_label: Weiteres Programm
+          item_label: Programm
+          min: 1
+          max: 15
+          fields:
+            - {key: software, label: Programm / Fachverfahren, type: catalog, catalog: software, required: true, width: half}
+            - {key: rolle, label: Rolle, type: text, width: half, placeholder: "siehe Rollen im Katalog"}
+            - {key: befristet_bis, label: Befristet bis, type: date, width: half}
+            - {key: begruendung, label: Begründung, type: textarea, required: true}
+computed:
+  - {key: sam, label: Benutzername, tpl: "{{.person.sam}}"}
+steps:
+  - id: fg_vorgesetzt
+    title: Freigabe Vorgesetzte/r
+    kind: freigabe
+    after: []
+    assign: {type: feld, field: vorgesetzter}
+    due_hours: 48
+    why: Bedarf für die Tätigkeit bestätigen.
+  - id: fg_verfahren
+    title: Freigabe Verfahrensverantwortung
+    kind: freigabe
+    after: [fg_vorgesetzt]
+    foreach: programme
+    when: {mode: all, rules: [{field: item.software.freigabe, op: eq, values: ["ja"]}]}
+    assign: {type: katalog, field: software, attr: verantwortlich}
+    due_hours: 72
+    why: Zugriff nur nach Freigabe der Verfahrensverantwortlichen.
+    instructions: |
+      {{.item.software}} für {{.person}} ({{.person.department}}, {{.person.title}})
+      Rolle: {{default "Standard" .item.rolle}}{{if .item.befristet_bis}} · befristet bis {{datum .item.befristet_bis}}{{end}}
+      Begründung: {{.item.begruendung}}
+  - id: gruppen
+    title: AD-Gruppen setzen
+    kind: aufgabe
+    after: [fg_verfahren]
+    foreach: programme
+    assign: {type: stelle, stelle: it_benutzer}
+    instructions: "{{.item.software}} → {{.item.software.ad_gruppen}}"
+    scripts:
+      - title: Gruppen
+        lang: powershell
+        code: |
+          # {{.item.software}} für {{.person}}
+          foreach ($g in {{psarr (split .item.software.ad_gruppen)}}) {
+              Add-ADGroupMember -Identity $g -Members {{ps .c.sam}}
+              Write-Host "+ $g" -ForegroundColor Green
+          }
+          {{- if .item.befristet_bis}}
+          # Befristung: am {{datum .item.befristet_bis}} wieder entfernen
+          # Remove-ADGroupMember -Identity <Gruppe> -Members {{ps .c.sam}} -Confirm:$false
+          {{- end}}
+  - id: installation
+    title: Installation & Lizenz
+    kind: aufgabe
+    after: [gruppen]
+    foreach: programme
+    when: {mode: all, rules: [{field: item.software.lizenz, op: eq, values: ["ja"]}]}
+    assign: {type: stelle, stelle: it_client}
+    instructions: "{{.item.software}} auf dem Gerät von {{.person}} bereitstellen und Lizenz zuweisen."
+    checklist:
+      - Lizenz zugewiesen
+      - Softwareverteilung abgeschlossen
+  - id: verfahren
+    title: Einrichtung im Fachverfahren
+    kind: aufgabe
+    after: [gruppen]
+    foreach: programme
+    when: {mode: all, rules: [{field: item.software.eigenes_konto, op: eq, values: ["ja"]}]}
+    assign: {type: katalog, field: software, attr: betreuung}
+    instructions: "{{.item.software}}: {{.c.sam}} mit Rolle „{{default \"Standard\" .item.rolle}}“ einrichten."
+    checklist:
+      - Benutzer/Rolle eingerichtet
+      - Person informiert
+  - id: info
+    title: Info an die Person
+    kind: info
+    after: [installation, verfahren]
+    assign: {type: feld, field: person}
+    mail:
+      subject: "Ihre Programme sind freigeschaltet ({{.antrag.nummer}})"
+      body: |
+        Guten Tag {{.person.given}},
+
+        folgende Programme sind für Sie eingerichtet: {{join ", " (pluck .programme "software.label")}}.
+        Bitte melden Sie sich einmal ab und wieder an, damit neue Berechtigungen wirksam werden.

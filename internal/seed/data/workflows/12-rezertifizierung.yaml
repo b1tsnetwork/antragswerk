@@ -1,0 +1,98 @@
+key: rezertifizierung
+name: Rezertifizierung von Berechtigungen
+description: Regelmäßige Überprüfung, wer auf Verzeichnisse und Funktionspostfächer zugreifen darf – je Ablage entscheidet der Dateneigentümer, die IT entfernt nicht mehr benötigte Zugriffe.
+category: Berechtigungen
+icon: "🔍"
+color: "#6d28d9"
+prefix: REZ
+title_tpl: "Rezertifizierung {{.zeitraum}} – {{count (concat .verzeichnisse .postfaecher)}} Ablagen"
+intro: Typischerweise einmal jährlich durch die Informationssicherheit oder IT gestartet. Die Mitgliederlisten stehen den Prüfenden als Skript zur Verfügung.
+audience: [isb, it_benutzer, it_leitung]
+form:
+  sections:
+    - id: umfang
+      title: Umfang
+      icon: "🔍"
+      fields:
+        - {key: zeitraum, label: Bezeichnung, type: text, required: true, width: half, default: "2026", placeholder: "z. B. 2026 / 2. Halbjahr"}
+        - {key: frist, label: Rückmeldung bis, type: date, required: true, width: half}
+        - {key: verzeichnisse, label: Verzeichnisse, type: catalog, catalog: verzeichnisse, multi: true}
+        - {key: postfaecher, label: Funktionspostfächer, type: catalog, catalog: postfaecher, multi: true}
+        - {key: leer, type: info, tone: warn, label: "Bitte mindestens ein Verzeichnis oder Postfach wählen.", show: {mode: all, rules: [{field: verzeichnisse, op: unset}, {field: postfaecher, op: unset}]}}
+computed:
+  - {key: frist, label: Frist, tpl: "{{datum .frist}}"}
+steps:
+  - id: pruefung_vz
+    title: Zugriffe prüfen (Verzeichnis)
+    kind: aufgabe
+    after: []
+    foreach: verzeichnisse
+    assign: {type: katalog, field: verzeichnisse, attr: eigentuemer}
+    due_hours: 336
+    why: Berechtigungen wachsen über die Zeit – regelmäßige Rezertifizierung durch die Dateneigentümer (BSI ORP.4.A5, DSGVO Art. 32).
+    instructions: |
+      Bitte prüfen Sie bis **{{.c.frist}}**, wer auf **{{.item}}** ({{.item.pfad}}) zugreift.
+      Tragen Sie unten alle Personen ein, deren Zugriff entfernt oder herabgestuft werden soll – oder „keine Änderungen“.
+    checklist:
+      - Mitglieder „Lesen“ geprüft
+      - Mitglieder „Ändern“ geprüft
+    outputs:
+      - {key: entfernen, label: Zu entfernen / ändern, type: textarea, required: true, placeholder: "z. B. m.muster (ausgeschieden), p.beispiel nur noch Lesen – oder: keine Änderungen"}
+    scripts:
+      - title: Aktuelle Mitglieder anzeigen
+        lang: powershell
+        code: |
+          foreach ($g in @({{ps .item.gruppe_ro}}, {{ps .item.gruppe_rw}})) {
+              "`n== $g =="
+              Get-ADGroupMember $g -Recursive | Get-ADUser -Properties Department, Enabled, LastLogonDate |
+                Sort-Object Name | Format-Table Name, SamAccountName, Department, Enabled, LastLogonDate -AutoSize
+          }
+  - id: pruefung_pf
+    title: Zugriffe prüfen (Postfach)
+    kind: aufgabe
+    after: []
+    foreach: postfaecher
+    assign: {type: katalog, field: postfaecher, attr: verantwortlich}
+    due_hours: 336
+    why: Zugriffe auf Funktionspostfächer regelmäßig bestätigen.
+    instructions: "Bitte prüfen Sie bis **{{.c.frist}}** die Zugriffe auf **{{.item.adresse}}** (Gruppe {{.item.gruppe}})."
+    outputs:
+      - {key: entfernen, label: Zu entfernen, type: textarea, required: true, placeholder: "Namen – oder: keine Änderungen"}
+    scripts:
+      - title: Mitglieder anzeigen
+        lang: powershell
+        code: |
+          Get-ADGroupMember {{ps .item.gruppe}} -Recursive | Get-ADUser -Properties Department, Enabled | Sort-Object Name | Format-Table Name, SamAccountName, Department, Enabled -AutoSize
+  - id: umsetzen
+    title: Rückmeldungen umsetzen
+    kind: aufgabe
+    after: [pruefung_vz, pruefung_pf]
+    assign: {type: stelle, stelle: it_benutzer}
+    instructions: |
+      Rückmeldungen der Verantwortlichen:
+      {{- range .out.pruefung_vz.liste}}
+      • **{{.eintrag}}** ({{.von}}): {{.entfernen}}
+      {{- end}}
+      {{- range .out.pruefung_pf.liste}}
+      • **{{.eintrag}}** ({{.von}}): {{.entfernen}}
+      {{- end}}
+    checklist:
+      - Alle gemeldeten Zugriffe entfernt bzw. angepasst
+      - Ergebnis im Kommentar dokumentiert
+  - id: abschluss
+    title: Abschlussbericht an Informationssicherheit
+    kind: info
+    after: [umsetzen]
+    assign: {type: stelle, stelle: isb}
+    mail:
+      subject: "[{{.antrag.nummer}}] Rezertifizierung {{.zeitraum}} abgeschlossen"
+      body: |
+        Rezertifizierung {{.zeitraum}} abgeschlossen, umgesetzt von {{.out.umsetzen.von}} ({{.out.umsetzen.am}}).
+        {{- range .out.pruefung_vz.liste}}
+          • {{.eintrag}} – {{.von}}: {{.entfernen}}
+        {{- end}}
+        {{- range .out.pruefung_pf.liste}}
+          • {{.eintrag}} – {{.von}}: {{.entfernen}}
+        {{- end}}
+
+        Nachweis: {{.antrag.link}}

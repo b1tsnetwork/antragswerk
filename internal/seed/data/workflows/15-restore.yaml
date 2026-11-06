@@ -1,0 +1,59 @@
+key: restore
+name: Datenwiederherstellung aus der Sicherung
+description: Gelöschte oder überschriebene Dateien, Ordner oder Postfachinhalte wiederherstellen – bei fremden Ablagen mit Freigabe der Dateneigentümer.
+category: Zugänge & Geräte
+icon: "♻️"
+color: "#0e7490"
+prefix: RST
+title_tpl: "Wiederherstellung {{.art_text}} ({{.stand_text}} {{datum .datum}})"
+form:
+  sections:
+    - id: was
+      title: "Was soll wiederhergestellt werden?"
+      icon: "♻️"
+      fields:
+        - {key: art, label: Art, type: radio, required: true, default: datei, options: [{value: datei, label: Dateien / Ordner}, {value: postfach, label: Mails / Postfachinhalte}]}
+        - {key: verzeichnis, label: Ablage, type: catalog, catalog: verzeichnisse, width: half, help: "leer = eigenes Home-Laufwerk", show: {mode: all, rules: [{field: art, op: eq, values: [datei]}]}}
+        - {key: pfad, label: Pfad / Ordner / Dateiname, type: text, required: true, width: half, placeholder: 'z. B. \\fs01\abteilung$\32\Vorlagen\Formulare'}
+        - {key: stand, label: Stand, type: select, required: true, width: third, default: vor, options: [{value: vor, label: Stand vor dem}, {value: am, label: Stand am}]}
+        - {key: datum, label: Datum, type: date, required: true, width: third}
+        - {key: ziel, label: Wiederherstellen nach, type: radio, required: true, default: alternativ, options: [{value: alternativ, label: Unterordner „Wiederhergestellt“ (sicher)}, {value: original, label: Am Originalort (überschreibt)}]}
+        - {key: beschreibung, label: "Was ist passiert?", type: textarea}
+computed:
+  - {key: quelle, label: Quelle, tpl: "{{if .verzeichnis.key}}{{.verzeichnis.pfad}}{{else if eq .art \"datei\"}}{{.var.home_root}}\\{{.antrag.antragsteller}}{{else}}Postfach {{.antrag.antragsteller_mail}}{{end}}"}
+steps:
+  - id: fg_daten
+    title: Freigabe Dateneigentümer
+    kind: freigabe
+    after: []
+    when: {mode: all, rules: [{field: verzeichnis, op: set}]}
+    assign: {type: katalog, field: verzeichnis, attr: eigentuemer}
+    why: Wiederherstellungen in fremden Ablagen können Daten überschreiben oder Unberechtigten zugänglich machen.
+    instructions: "{{.antrag.antragsteller_name}} möchte „{{.pfad}}“ ({{.stand_text}} {{datum .datum}}) in {{.verzeichnis}} wiederherstellen – {{.ziel_text}}."
+  - id: wiederherstellen
+    title: Aus Sicherung wiederherstellen
+    kind: aufgabe
+    after: [fg_daten]
+    assign: {type: stelle, stelle: it_benutzer}
+    due_hours: 24
+    instructions: |
+      Quelle: {{.c.quelle}}
+      Objekt: {{.pfad}} – {{.stand_text}} {{datum .datum}} – Ziel: {{.ziel_text}}
+      {{if .beschreibung}}Hinweis: {{.beschreibung}}{{end}}
+    checklist:
+      - Passenden Sicherungsstand gewählt
+      - Wiederhergestellt und Berechtigungen geprüft
+      - Antragsteller/in informiert, wo die Daten liegen
+    outputs:
+      - {key: ergebnis, label: "Wo liegen die Daten?", type: text, required: true}
+  - id: info
+    title: Info an Antragsteller/in
+    kind: info
+    after: [wiederherstellen]
+    assign: {type: antragsteller}
+    mail:
+      subject: "Ihre Daten wurden wiederhergestellt ({{.antrag.nummer}})"
+      body: |
+        Guten Tag,
+
+        die Wiederherstellung von „{{.pfad}}“ ist erledigt: {{.out.wiederherstellen.ergebnis}}

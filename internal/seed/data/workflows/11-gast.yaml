@@ -1,0 +1,57 @@
+key: gast
+name: Gastzugang WLAN für Veranstaltung
+description: Befristete WLAN-Zugänge für Gäste, Schulungen oder Sitzungen – Zugangsdaten gehen an die antragstellende Person, nach der Veranstaltung laufen sie ab.
+category: Zugänge & Geräte
+icon: "📶"
+color: "#4d7c0f"
+prefix: GAST
+title_tpl: "Gast-WLAN „{{.anlass}}“ am {{datum .von}}"
+form:
+  sections:
+    - id: anlass
+      title: Veranstaltung
+      icon: "📅"
+      fields:
+        - {key: anlass, label: Anlass, type: text, required: true, placeholder: "z. B. Schulung Fachverfahren, Ratssitzung"}
+        - {key: von, label: Von, type: date, required: true, width: third}
+        - {key: bis, label: Bis, type: date, required: true, width: third}
+        - {key: anzahl, label: Anzahl Zugänge, type: number, required: true, width: third, default: "5", pattern: '^([1-9]|[1-9][0-9])$', pattern_msg: "1–99"}
+        - {key: raum, label: Raum, type: catalog, catalog: raeume, width: half}
+        - {key: art, label: Art der Zugänge, type: radio, required: true, default: voucher, options: [{value: voucher, label: Einzel-Voucher je Gast}, {value: gemeinsam, label: Ein gemeinsames Kennwort}]}
+        - {key: hinweis_daten, type: info, tone: info, label: "Gäste erhalten nur Internetzugang – kein Zugriff auf das Verwaltungsnetz. Namen der Gäste werden nicht benötigt."}
+computed:
+  - {key: tage, label: Gültigkeit, tpl: "{{datum .von}} bis {{datum .bis}}"}
+steps:
+  - id: zugaenge
+    title: WLAN-Zugänge erzeugen
+    kind: aufgabe
+    after: []
+    assign: {type: stelle, stelle: it_client}
+    due_hours: 24
+    instructions: "{{.anzahl}} Zugänge ({{.art_text}}) für „{{.anlass}}“, gültig {{.c.tage}}{{if .raum.key}}, Raum {{.raum}}{{end}}. SSID: {{.var.gast_ssid}}"
+    checklist:
+      - Zugänge im WLAN-Controller mit Ablaufdatum angelegt
+      - Zugangsdaten unten eingetragen (gehen per Mail an die antragstellende Person)
+    outputs:
+      - {key: zugangsdaten, label: Zugangsdaten / Vouchers, type: textarea, required: true}
+    scripts:
+      - title: Zufällige Voucher-Codes (falls der Controller keine erzeugt)
+        lang: powershell
+        code: |
+          $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'.ToCharArray()
+          1..{{default "1" .anzahl}} | ForEach-Object { -join (1..10 | ForEach-Object { $chars | Get-Random }) }
+  - id: info
+    title: Zugangsdaten an Antragsteller/in
+    kind: info
+    after: [zugaenge]
+    assign: {type: antragsteller}
+    mail:
+      subject: "Gast-WLAN für „{{.anlass}}“ ({{.c.tage}})"
+      body: |
+        Guten Tag,
+
+        für „{{.anlass}}“ stehen folgende Zugänge im WLAN „{{.var.gast_ssid}}“ bereit (gültig {{.c.tage}}):
+
+        {{.out.zugaenge.zugangsdaten}}
+
+        Bitte nur an die Teilnehmenden weitergeben.

@@ -1,0 +1,74 @@
+key: ausstattung
+name: Arbeitsplatzausstattung bestellen
+description: Monitore, Headsets, Dockingstationen und weiteres Zubehör anfordern – mit Freigabe durch Vorgesetzte und bei Notebooks zusätzlich durch die IT-Leitung.
+category: Zugänge & Geräte
+icon: "🖥"
+color: "#7c3aed"
+prefix: HW
+title_tpl: "Ausstattung für {{.person}}: {{count .positionen}} Position(en)"
+form:
+  sections:
+    - id: person
+      title: "Für wen?"
+      icon: "👤"
+      fields:
+        - {key: person, label: Person, type: user, required: true, width: half}
+        - {key: vorgesetzter, label: Vorgesetzte/r, type: user, required: true, width: half}
+        - {key: raum, label: Raum, type: catalog, catalog: raeume, width: half}
+        - {key: kostenstelle, label: Kostenstelle, type: text, width: half, placeholder: "z. B. 3200"}
+    - id: positionen
+      title: Positionen
+      icon: "📦"
+      fields:
+        - key: positionen
+          label: Positionen
+          type: group
+          required: true
+          min: 1
+          add_label: Position hinzufügen
+          item_label: Position
+          fields:
+            - {key: artikel, label: Artikel, type: select, required: true, width: half, options: [{value: monitor, label: Monitor}, {value: headset, label: Headset}, {value: docking, label: Dockingstation}, {value: eingabe, label: Maus / Tastatur}, {value: webcam, label: Webcam}, {value: notebook, label: Notebook}, {value: sonstiges, label: Sonstiges}]}
+            - {key: anzahl, label: Anzahl, type: number, required: true, width: third, default: "1"}
+            - {key: bezeichnung, label: Bezeichnung, type: text, required: true, show: {mode: all, rules: [{field: artikel, op: eq, values: [sonstiges]}]}}
+            - {key: begruendung, label: Begründung, type: text, required: true}
+computed:
+  - {key: liste, label: Positionen, tpl: "{{range $i, $p := .positionen}}{{if $i}}, {{end}}{{$p.anzahl}}× {{if $p.bezeichnung}}{{$p.bezeichnung}}{{else}}{{$p.artikel_text}}{{end}}{{end}}"}
+steps:
+  - id: fg_vorgesetzt
+    title: Freigabe Vorgesetzte/r
+    kind: freigabe
+    after: []
+    assign: {type: feld, field: vorgesetzter}
+    why: Bedarf und Kostenübernahme durch die Organisationseinheit bestätigen.
+    instructions: "{{.c.liste}}{{if .kostenstelle}} · Kostenstelle {{.kostenstelle}}{{end}}"
+  - id: fg_it
+    title: Freigabe IT-Leitung (Notebook)
+    kind: freigabe
+    after: [fg_vorgesetzt]
+    when: {mode: all, rules: [{field: positionen, op: contains, values: [notebook]}]}
+    assign: {type: stelle, stelle: it_leitung}
+    why: Notebooks sind Teil der Gerätestrategie und des Lizenzbudgets.
+  - id: liefern
+    title: Bestellen bzw. aus Lager bereitstellen
+    kind: aufgabe
+    after: [fg_it]
+    assign: {type: stelle, stelle: it_client}
+    instructions: "{{.c.liste}} für {{.person}}{{if .raum.key}}, Raum {{.raum}}{{end}}."
+    checklist:
+      - Lagerbestand geprüft / bestellt
+      - Inventarisiert und der Person zugeordnet
+      - Ausgeliefert bzw. aufgebaut
+    outputs:
+      - {key: inventar, label: Inventarnummern, type: textarea}
+  - id: info
+    title: Info an Antragsteller/in
+    kind: info
+    after: [liefern]
+    assign: {type: antragsteller}
+    mail:
+      subject: "Ausstattung für {{.person}} ist bereit ({{.antrag.nummer}})"
+      body: |
+        Guten Tag,
+
+        die bestellte Ausstattung ({{.c.liste}}) ist bereitgestellt.
